@@ -18,7 +18,7 @@ Group G4 covers:
 - Set up metrics collection and dashboards (Prometheus)
 - Enforce secure communication, authentication, and access control
 
-## G4 Deliverables
+## G4 Future Deliverables
 
 - Dockerfiles and container build strategy
 - Kubernetes manifests (or Helm charts) for environments
