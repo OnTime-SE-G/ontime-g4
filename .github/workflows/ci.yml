@@ -158,7 +158,7 @@ jobs:
         if: ${{ hashFiles('specs/**/*.yml', 'specs/**/*.yaml') != '' }}
         run: |
           docker run --rm -v "$PWD:/work" stoplight/spectral:6 \
-            lint /work/specs/openapi.yaml
+            lint --ruleset /work/.spectral.yaml /work/specs/openapi.yaml
 
   build_image:
     runs-on: ubuntu-latest
