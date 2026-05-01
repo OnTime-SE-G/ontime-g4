@@ -1,0 +1,78 @@
+# 1. Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: transit-data
+---
+# 2. Secret for the Password
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-credentials
+  namespace: transit-data
+type: Opaque
+data:
+  # Base64 encoded "supersecurepassword"
+  POSTGRES_PASSWORD: c3VwZXJzZWN1cmVwYXNzd29yZA==
+---
+# 3. ConfigMap for the Init Script
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-script
+  namespace: transit-data
+data:
+  init.sql: |
+    CREATE DATABASE keycloak_db;
+    -- The main transit_db is created automatically by the environment variables
+---
+# 4. StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgresql
+  namespace: transit-data
+spec:
+  serviceName: "postgresql-service"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+  template:
+    metadata:
+      labels:
+        app: postgresql
+    spec:
+      containers:
+      - name: postgresql
+        image: postgres:16-alpine 
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "transit_db"
+        - name: POSTGRES_USER
+          value: "transit_admin"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_PASSWORD
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        - name: init-script-volume
+          mountPath: /docker-entrypoint-initdb.d/
+      volumes:
+      - name: init-script-volume
+        configMap:
+          name: postgres-init-script
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: do-block-storage
+      resources:
+        requests:
+          storage: 10Gi
