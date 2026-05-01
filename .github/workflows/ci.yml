@@ -1,3 +1,4 @@
+---
 name: G4 CI
 
 on:
@@ -200,7 +201,8 @@ jobs:
           while read -r dockerfile; do
             context_dir="$(dirname "$dockerfile")"
             service_name="$(basename "$context_dir")"
-            image="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-${service_name}:${{ github.sha }}"
+            image="${{ env.REGISTRY }}/${{ github.repository_owner }}"
+            image="${image}/${{ env.IMAGE_PREFIX }}-${service_name}:${{ github.sha }}"
 
             if [ "${{ github.event_name }}" = "push" ]; then
               docker buildx build --push -t "$image" -f "$dockerfile" "$context_dir"
@@ -220,7 +222,8 @@ jobs:
           while read -r dockerfile; do
             context_dir="$(dirname "$dockerfile")"
             service_name="$(basename "$context_dir")"
-            image="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-${service_name}:${{ github.sha }}"
+            image="${{ env.REGISTRY }}/${{ github.repository_owner }}"
+            image="${image}/${{ env.IMAGE_PREFIX }}-${service_name}:${{ github.sha }}"
             trivy image --severity CRITICAL --exit-code 1 "$image"
           done < dockerfiles.txt
 
