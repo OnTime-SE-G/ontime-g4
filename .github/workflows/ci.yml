@@ -69,7 +69,7 @@ jobs:
       - name: Detect Python tests
         id: pytests
         run: |
-          if find . -type f -name "test_*.py" -o -path "*/tests/*" | grep -q .; then
+          if find . -type f -name "test_*.py" -o -path "*/tests/*.py" | grep -q .; then
             echo "has_pytests=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_pytests=false" >> "$GITHUB_OUTPUT"
