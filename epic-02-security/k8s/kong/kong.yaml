@@ -1,0 +1,26 @@
+﻿_format_version: "3.0"
+_transform: true
+
+services:
+  - name: ontime-api
+    url: http://ontime-api:8000
+    routes:
+      - name: ontime-api-route
+        paths:
+          - /api/v1/ontime
+          - /api/v1/ontime/*
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+  
+  - name: kong-status
+    url: http://localhost:8001
+    routes:
+      - name: health-route
+        paths:
+          - /health
+        methods:
+          - GET
+          
