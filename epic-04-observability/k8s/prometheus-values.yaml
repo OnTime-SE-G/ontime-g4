@@ -1,7 +1,0 @@
-prometheus:
-  prometheusSpec:
-    # Set Prometheus data retention to 15 days for Increment 1
-    retention: 15d
-    # Configure to discover ServiceMonitors across namespaces without strict label matching
-    serviceMonitorSelectorNilUsesHelmValues: false
-    ruleSelectorNilUsesHelmValues: false

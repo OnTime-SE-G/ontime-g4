@@ -50,14 +50,16 @@ For integration and deployment to the Digital Ocean cluster, the Observability s
 
 ### Prometheus Installation (G4-28)
 
-1. Add the Helm repository and install the stack using the custom values in `k8s/prometheus-values.yaml` (which sets the 15-day retention requirement):
+1. Add the Helm repository and install the stack. We pass the 15-day retention policy and selector rules via inline flags to strictly maintain the G4 folder structure:
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
 
 helm install monitoring prometheus-community/kube-prometheus-stack \
   -n transit-platform --create-namespace \
-  -f k8s/prometheus-values.yaml
+  --set prometheus.prometheusSpec.retention=15d \
+  --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
+  --set prometheus.prometheusSpec.ruleSelectorNilUsesHelmValues=false
 ```
 
 2. Apply the custom ServiceMonitors to scrape G1/G2/G3 targets (Mosquitto, Kafka, Kong, Keycloak, PostgreSQL, InfluxDB):
