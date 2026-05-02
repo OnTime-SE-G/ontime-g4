@@ -1,4 +1,4 @@
-﻿# Epic 04 Observability
+# Epic 04 Observability
 
 This folder is for Prometheus, Grafana, Loki, Jaeger, alerts, dashboards, and HPA observability support.
 
@@ -34,4 +34,16 @@ This folder is for Prometheus, Grafana, Loki, Jaeger, alerts, dashboards, and HP
 2. Use the stub services until the full stack is online.
 3. Verify target health and metrics visibility before adding new alerts.
 
+## Local Development & Setup
 
+To start the observability stack locally, navigate to this folder and run:
+```bash
+docker compose up -d
+```
+
+### Testing (G4-28)
+To verify that Prometheus is running and scraping targets correctly, run the verification script:
+```bash
+bash tests/verify-metrics.sh
+```
+Prometheus UI is available at [http://localhost:9090](http://localhost:9090).
