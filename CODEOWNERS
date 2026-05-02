@@ -1,0 +1,15 @@
+# CODEOWNERS — G4 OnTime platform repository
+
+# Team lead ownership
+/.github/ @rathishTharusha
+/shared/ @rathishTharusha
+/docs/ @rathishTharusha
+/README.md @rathishTharusha
+/CODEOWNERS @rathishTharusha
+
+# Epic ownership
+/epic-01-messaging/ @RafiMAA
+/epic-02-security/ @Pirasanth-v
+/epic-03-data/ @teshaaan
+/epic-04-observability/ @rathishTharusha
+/epic-05-cicd/ @rangaNP

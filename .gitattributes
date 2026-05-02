@@ -1,0 +1,8 @@
+* text=auto
+
+# Shell scripts should remain LF
+*.sh text eol=lf
+
+# Windows command scripts should remain CRLF
+*.bat text eol=crlf
+*.ps1 text eol=crlf
