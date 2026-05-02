@@ -1,16 +1,15 @@
 # CODEOWNERS — G4 OnTime platform repository
-# Replace the placeholder usernames below before first team PR.
 
 # Team lead ownership
-/.github/ @team-lead-github-username
-/shared/ @team-lead-github-username
-/docs/ @team-lead-github-username
-/README.md @team-lead-github-username
-/CODEOWNERS @team-lead-github-username
+/.github/ @rathishTharusha
+/shared/ @rathishTharusha
+/docs/ @rathishTharusha
+/README.md @rathishTharusha
+/CODEOWNERS @rathishTharusha
 
 # Epic ownership
-/epic-01-messaging/ @person1-github-username
-/epic-02-security/ @person2-github-username
-/epic-03-data/ @person3-github-username
-/epic-04-observability/ @person4-github-username
-/epic-05-cicd/ @person5-github-username
+/epic-01-messaging/ @RafiMAA
+/epic-02-security/ @Pirasanth-v
+/epic-03-data/ @teshaaan
+/epic-04-observability/ @rathishTharusha
+/epic-05-cicd/ @rangaNP
