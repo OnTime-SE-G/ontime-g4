@@ -1,0 +1,23 @@
+name: PR Quick Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  quick-structure-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure no forbidden files
+        run: |
+          if git ls-files | grep -E "(^|/)\.env$|\.pem$|\.key$|\.crt$"; then
+            echo "Forbidden secret-like files detected"
+            exit 1
+          fi
+
+      - name: Ensure issue template exists
+        run: test -f .github/ISSUE_TEMPLATE/g4-task.md

@@ -1,0 +1,34 @@
+name: G4 CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - epic/**
+      - feat/**
+      - fix/**
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate repository skeleton
+        run: |
+          test -f CODEOWNERS
+          test -f .github/PULL_REQUEST_TEMPLATE.md
+          test -d epic-01-messaging
+          test -d epic-02-security
+          test -d epic-03-data
+          test -d epic-04-observability
+          test -d epic-05-cicd
+
+      - name: Validate spec tools
+        run: |
+          python --version || true
+          ls tools/spec

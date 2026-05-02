@@ -37,3 +37,62 @@ Group G4 covers:
 ---
 
 Maintained by G4.
+
+## Repository Structure (Guide-Aligned)
+
+This repository now follows the G4 development guide layout with isolated epic folders:
+
+- `epic-01-messaging`
+- `epic-02-security`
+- `epic-03-data`
+- `epic-04-observability`
+- `epic-05-cicd`
+- `shared`
+- `docs`
+
+Governance files added for day-one team setup:
+
+- `CODEOWNERS`
+- `.gitignore`
+- `.gitattributes`
+- `.github/PULL_REQUEST_TEMPLATE.md`
+- `.github/ISSUE_TEMPLATE/g4-task.md`
+- `.github/workflows/ci.yml`
+- `.github/workflows/pr-checks.yml`
+
+## Copilot Spec Workflow
+
+To support issue implementation with traceable references:
+
+1. Build a searchable index from SRS, SDD, and G4 docs:
+	- `c:/python314/python.exe tools/spec/build_spec_index.py`
+2. Query relevant sections:
+	- `c:/python314/python.exe tools/spec/query_specs.py --query "<topic>" --top 10`
+3. Use project prompt commands in Copilot Chat:
+	- `/spec-section`
+	- `/spec-issue-map`
+
+Customization files are under `.github/`:
+- Agent: `.github/agents/spec-librarian.agent.md`
+- Skill: `.github/skills/spec-reference/SKILL.md`
+- Prompts: `.github/prompts/`
+
+## Copilot G4 Workflow Pack
+
+Additional guide-specific Copilot customizations are included:
+
+- Agent: `.github/agents/g4-workflow-coach.agent.md`
+- Skills:
+	- `.github/skills/g4-repo-governance/SKILL.md`
+	- `.github/skills/g4-issue-delivery/SKILL.md`
+- Prompts:
+	- `/g4-bootstrap`
+	- `/g4-start-issue`
+	- `/g4-pr-ready`
+
+## Team Lead Next Steps
+
+1. Replace placeholder GitHub usernames in `CODEOWNERS`.
+2. Enable branch protection on `main` (require PR, approvals, status checks, code owner review).
+3. Assign each member one epic folder owner role.
+4. Start issues using `/g4-start-issue` so each task is mapped to one epic folder with spec references.
