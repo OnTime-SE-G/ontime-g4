@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: transit-platform
+
+# automatically creates the ConfigMap by reading kong.yaml file
+configMapGenerator:
+  - name: kong-declarative-config
+    files:
+      - kong.yml=./kong/kong.yaml
+
+resources:
+  - namespace.yaml
+  - kong-deployment.yaml
+  - kong-service.yaml
+  - kong-hpa.yaml
+
+
+
+   
