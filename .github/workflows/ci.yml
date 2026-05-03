@@ -204,10 +204,11 @@ jobs:
       - name: Build and push images
         if: ${{ steps.dockerfiles.outputs.count != '0' }}
         run: |
+          repo_lc=$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
           while IFS= read -r file; do
             context=$(dirname "$file")
             service=$(basename "$context")
-            image="$REGISTRY/$GITHUB_REPOSITORY/g4-$service:$GITHUB_SHA"
+            image="$REGISTRY/$repo_lc/g4-$service:$GITHUB_SHA"
             docker buildx build --push -t "$image" -f "$file" "$context"
           done < dockerfiles.txt
 
