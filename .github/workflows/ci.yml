@@ -165,7 +165,7 @@ jobs:
         if: ${{ hashFiles('shared/contracts/openapi/*.yml', 'shared/contracts/openapi/*.yaml') != '' }}
         run: |
           docker run --rm -v "$PWD:/work" stoplight/spectral:6 \
-            lint /work/shared/contracts/openapi/transit-api.yaml
+            lint /work/shared/contracts/openapi/transit-api.yaml --ruleset /work/.spectral.yaml
 
   build_image:
     runs-on: ubuntu-latest
