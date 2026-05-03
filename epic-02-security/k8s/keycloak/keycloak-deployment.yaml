@@ -111,9 +111,9 @@ spec:
             - name: KC_HOSTNAME_STRICT_HTTPS
               value: "false"               # allow non-HTTPS for hostname strictness
             - name: KC_HOSTNAME_URL
-              value: "http://10.100.220.147/auth"        # external Keycloak URL
+              value: "http://10.110.238.6/auth"        # external Keycloak URL
             - name: KC_HOSTNAME_ADMIN_URL
-              value: "http://10.100.220.147/auth"        # external admin URL
+              value: "http://10.110.238.6/auth"        # external admin URL
             - name: KC_HTTP_ENABLED
               value: "true"                # enable HTTP
             - name: KC_HTTP_PORT
