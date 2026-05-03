@@ -1,2 +1,87 @@
 ﻿# TODO: Implement according to G4 guide and issue assignment.
 
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: influxdb-init-script
+  namespace: transit-data
+data:
+  setup.sh: |
+    #!/bin/bash
+    set -e
+    sleep 5
+    influx bucket create -n gps-aggregates -o transit-org -r 2160h -t $DOCKER_INFLUXDB_INIT_ADMIN_TOKEN
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: influxdb-service
+  namespace: transit-data
+spec:
+  selector:
+    app: influxdb
+  ports:
+    - protocol: TCP
+      port: 8086
+      targetPort: 8086
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: influxdb
+  namespace: transit-data
+spec:
+  serviceName: "influxdb-service"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: influxdb
+  template:
+    metadata:
+      labels:
+        app: influxdb
+    spec:
+      containers:
+      - name: influxdb
+        image: influxdb:2.7
+        ports:
+        - containerPort: 8086
+        env:
+        - name: DOCKER_INFLUXDB_INIT_MODE
+          value: "setup"
+        - name: DOCKER_INFLUXDB_INIT_USERNAME
+          value: "admin"
+        - name: DOCKER_INFLUXDB_INIT_ORG
+          value: "transit-org"
+        - name: DOCKER_INFLUXDB_INIT_BUCKET
+          value: "gps-telemetry"
+        - name: DOCKER_INFLUXDB_INIT_RETENTION
+          value: "168h"
+        # HARDCODED PASSWORDS (No Secrets required for now)
+        - name: DOCKER_INFLUXDB_INIT_PASSWORD
+          value: "SuperSecurePassword123!"
+        - name: DOCKER_INFLUXDB_INIT_ADMIN_TOKEN
+          value: "g4-transit-admin-token-998877"
+        volumeMounts:
+        - name: influxdb-storage
+          mountPath: /var/lib/influxdb2
+        - name: init-script-volume
+          mountPath: /docker-entrypoint-initdb.d/setup.sh
+          subPath: setup.sh
+      volumes:
+      - name: init-script-volume
+        configMap:
+          name: influxdb-init-script
+          defaultMode: 0777
+  volumeClaimTemplates:
+  - metadata:
+      name: influxdb-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      #storageClassName: standard #just to test locally
+      resources:
+        requests:
+          storage: 15Gi
