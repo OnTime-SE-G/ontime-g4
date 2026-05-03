@@ -14,7 +14,7 @@ services:
           - POST
           - PUT
           - DELETE
-  
+
   - name: kong-status
     url: http://localhost:8001
     routes:
@@ -23,4 +23,3 @@ services:
           - /health
         methods:
           - GET
-          

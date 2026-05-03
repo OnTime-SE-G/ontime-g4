@@ -53,7 +53,7 @@ spec:
               port: 8001
             initialDelaySeconds: 5
             periodSeconds: 10
-            
+
           # IMPORTANT: The HPA auto-scaler will not work unless we define resource requests!
           resources:
             requests:
@@ -62,7 +62,7 @@ spec:
             limits:
               cpu: "500m"
               memory: "512Mi"
-              
+
           volumeMounts:
             - name: kong-config-volume
               mountPath: /kong_config

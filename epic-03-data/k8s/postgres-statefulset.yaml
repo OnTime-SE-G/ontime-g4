@@ -1,6 +1,5 @@
-﻿# TODO: Implement according to G4 guide and issue assignment.
-
-# 1. Namespace
+# TODO: Implement according to G4 guide and issue assignment.
+---
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -32,7 +31,7 @@ metadata:
   name: postgresql
   namespace: transit-data
 spec:
-  serviceName: "postgresql-service"
+  serviceName: postgresql-service
   replicas: 1
   selector:
     matchLabels:
@@ -68,12 +67,15 @@ spec:
         - name: init-script-volume
           configMap:
             name: postgres-init-script
+        - name: init-script-volume
+          configMap:
+            name: postgres-init-script
   volumeClaimTemplates:
     - metadata:
         name: postgres-storage
       spec:
         accessModes: ["ReadWriteOnce"]
-        #storageClassName: standard
+        storageClassName: do-block-storage
         resources:
           requests:
             storage: 10Gi
