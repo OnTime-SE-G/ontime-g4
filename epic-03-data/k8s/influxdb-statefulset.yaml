@@ -60,11 +60,16 @@ spec:
           value: "gps-telemetry"
         - name: DOCKER_INFLUXDB_INIT_RETENTION
           value: "168h"
-        # HARDCODED PASSWORDS (No Secrets required for now)
         - name: DOCKER_INFLUXDB_INIT_PASSWORD
-          value: "SuperSecurePassword123!"
+          valueFrom:
+            secretKeyRef:
+              name: influxdb-credentials
+              key: password
         - name: DOCKER_INFLUXDB_INIT_ADMIN_TOKEN
-          value: "g4-transit-admin-token-998877"
+          valueFrom:
+            secretKeyRef:
+              name: influxdb-credentials
+              key: admin-token
         volumeMounts:
         - name: influxdb-storage
           mountPath: /var/lib/influxdb2

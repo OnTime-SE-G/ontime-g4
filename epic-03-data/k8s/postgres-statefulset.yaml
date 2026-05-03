@@ -6,16 +6,7 @@ kind: Namespace
 metadata:
   name: transit-data
 ---
-# 2. Secret for the Password
-apiVersion: v1
-kind: Secret
-metadata:
-  name: postgres-credentials
-  namespace: transit-data
-type: Opaque
-data:
-  POSTGRES_PASSWORD: c3VwZXJzZWN1cmVwYXNzd29yZA==
----
+
 # 3. UPDATED ConfigMap for the Init Script
 #apiVersion: v1
 #kind: ConfigMap
@@ -67,7 +58,7 @@ spec:
           valueFrom:
             secretKeyRef:
               name: postgres-credentials
-              key: POSTGRES_PASSWORD
+              key: password
         volumeMounts:
         - name: postgres-storage
           mountPath: /var/lib/postgresql/data
