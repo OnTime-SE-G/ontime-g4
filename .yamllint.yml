@@ -1,0 +1,12 @@
+extends: default
+
+rules:
+  empty-lines:
+    max: 3
+    max-start: 2
+    max-end: 2
+  line-length:
+    max: 140
+    level: warning
+  truthy:
+    allowed-values: ["true", "false", "on", "off", "yes", "no"]
