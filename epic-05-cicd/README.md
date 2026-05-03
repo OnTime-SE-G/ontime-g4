@@ -35,4 +35,8 @@ This folder is for the delivery pipeline, Helm packaging, cluster bootstrap, and
 2. Make rollout steps reproducible and documented.
 3. Verify the pipeline before adding new deployment logic.
 
+## G4-37 GHCR and secrets
+
+See docs/ci-cd/ghcr-secrets.md for GHCR setup and required GitHub Actions secrets.
+
 
