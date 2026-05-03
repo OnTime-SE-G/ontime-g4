@@ -5,3 +5,13 @@ prometheus:
     # Configure to discover ServiceMonitors across namespaces without strict label matching
     serviceMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
+
+grafana:
+  admin:
+    existingSecret: monitoring-grafana-auth
+    userKey: admin-user
+    passwordKey: admin-password
+  grafana.ini:
+    server:
+      root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
+      serve_from_sub_path: true

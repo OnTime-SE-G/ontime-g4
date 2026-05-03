@@ -49,12 +49,12 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: kong
+      app: kong-gateway
   namespaceSelector:
     matchNames:
       - transit-security
   endpoints:
-    - port: admin
+    - port: admin-api
       path: /metrics
       interval: 15s
 
@@ -89,7 +89,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: postgres
+      app: postgresql
   namespaceSelector:
     matchNames:
       - transit-data
