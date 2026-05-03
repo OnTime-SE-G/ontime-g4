@@ -28,22 +28,45 @@ This folder is for Prometheus, Grafana, Loki, Jaeger, alerts, dashboards, and HP
 3. SRS requirement FR-G4-04.
 4. SRS requirements NFR-SUP-01, NFR-PERF-01, and NFR-PERF-03.
 
-## Start here
+## Local Development (Phase 1)
 
-1. Keep dashboard and alert changes reproducible.
-2. Use the stub services until the full stack is online.
-3. Verify target health and metrics visibility before adding new alerts.
-
-## Local Development & Setup
+For local development without a Kubernetes cluster, we use `docker-compose`. This spins up the full stack alongside placeholder/stub metrics endpoints for testing the dashboards independently.
 
 To start the observability stack locally, navigate to this folder and run:
 ```bash
 docker compose up -d
 ```
 
-### Testing (G4-28)
-To verify that Prometheus is running and scraping targets correctly, run the verification script:
+### Testing Local Setup (G4-28)
+To verify that Prometheus is running and scraping targets correctly locally:
 ```bash
 bash tests/verify-metrics.sh
 ```
 Prometheus UI is available at [http://localhost:9090](http://localhost:9090).
+
+## Kubernetes Deployment (Phase 2 Integration)
+
+For integration and deployment to the Digital Ocean cluster, the Observability stack uses the `kube-prometheus-stack` Helm chart along with custom `ServiceMonitor` CRDs for cross-team scraping.
+
+### Prometheus Installation (G4-28)
+
+1. Add the Helm repository and install the stack using the custom values in `k8s/prometheus-values.yaml` (which sets the 15-day retention requirement):
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+
+helm install monitoring prometheus-community/kube-prometheus-stack \
+  -n transit-platform --create-namespace \
+  -f k8s/prometheus-values.yaml
+```
+
+2. Apply the custom ServiceMonitors to scrape G1/G2/G3 targets (Mosquitto, Kafka, Kong, Keycloak, PostgreSQL, InfluxDB):
+```bash
+kubectl apply -f k8s/prometheus-servicemonitor.yaml
+```
+
+3. Verification: Port-forward Prometheus and check the UI for the targets:
+```bash
+kubectl port-forward svc/monitoring-kube-prometheus-prometheus 9090:9090 -n transit-platform
+# Open http://localhost:9090/targets
+```
