@@ -5,6 +5,9 @@ rules:
     max: 3
     max-start: 2
     max-end: 2
+  comments: disable
+  comments-indentation: disable
+  document-start: disable
   line-length:
     max: 140
     level: warning

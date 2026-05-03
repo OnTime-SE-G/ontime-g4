@@ -4,4 +4,3 @@ metadata:
   name: transit-platform
   labels:
     app.kubernetes.io/part-of: ontime
-    

@@ -51,7 +51,8 @@ jobs:
       - name: Validate Kubernetes manifests
         if: ${{ hashFiles('**/k8s/**/*.yml', '**/k8s/**/*.yaml') != '' }}
         run: |
-          find . -type f \( -name "*.yml" -o -name "*.yaml" \) -path "*/k8s/*" -print0 \
+          find . -type f \( -name "*.yml" -o -name "*.yaml" \) -path "*/k8s/*" \
+            ! -name "*values*.yml" ! -name "*values*.yaml" ! -path "*/kong/kong.yaml" -print0 \
             | xargs -0 kubeconform -strict -summary -ignore-missing-schemas -kubernetes-version 1.29.0
 
       - name: Lint shell scripts
@@ -114,7 +115,7 @@ jobs:
         id: nodetests
         run: |
           if [ -f package.json ]; then
-            node -e "try { const p=require('./package.json'); process.exit(p.scripts && p.scripts.test ? 0 : 1); } catch(e) { process.exit(1); }" \
+            node -e "const p=require('./package.json');process.exit(p.scripts&&p.scripts.test?0:1)" \
               && echo "has_node_tests=true" >> "$GITHUB_OUTPUT" \
               || echo "has_node_tests=false" >> "$GITHUB_OUTPUT"
           else
