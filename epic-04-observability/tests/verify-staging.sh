@@ -4,8 +4,7 @@ set -e
 echo "=== G4-28 Staging Acceptance Test ==="
 
 echo "1. Checking if Prometheus pod is Running in transit-platform namespace..."
-kubectl get pods -n transit-platform -l app.kubernetes.io/name=prometheus | grep "Running"
-if [ $? -eq 0 ]; then
+if kubectl get pods -n transit-platform -l app.kubernetes.io/name=prometheus | grep -q "Running"; then
     echo "SUCCESS: Prometheus pod is running."
 else
     echo "FAILURE: Prometheus pod is not running."
@@ -13,8 +12,7 @@ else
 fi
 
 echo "2. Checking Prometheus data retention configuration..."
-kubectl get prometheus -n transit-platform -o jsonpath='{.items[0].spec.retention}' | grep "15d"
-if [ $? -eq 0 ]; then
+if kubectl get prometheus -n transit-platform -o jsonpath='{.items[0].spec.retention}' | grep -q "15d"; then
     echo "SUCCESS: Retention is set to 15 days."
 else
     echo "FAILURE: Retention is not 15 days."

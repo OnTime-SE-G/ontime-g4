@@ -5,7 +5,7 @@ echo "Checking Prometheus Targets Status..."
 
 # We wait for Prometheus to be ready
 echo "Waiting for Prometheus to be up..."
-for i in {1..15}; do
+for _ in {1..15}; do
     STATUS=$(curl -s http://localhost:9090/-/ready || echo "Not Ready")
     if [[ "$STATUS" == *"Prometheus is Ready."* || "$STATUS" == *"Prometheus Server is Ready"* ]]; then
         echo "Prometheus is ready."
