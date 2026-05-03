@@ -1,2 +1,44 @@
-﻿{}
+﻿{
+    "realm": "transit-system",
+    "enabled": true,
+    "sslRequired": "external",
+    "registrationAllowed": false,
+    "bruteForceProtected": true,
+    "failureFactor": 5,
+    "waitIncrementSeconds": 60,
+    "maxFailureWaitSeconds": 900,
+  
+    "accessTokenLifespan": 3600,
+    "ssoSessionIdleTimeout": 1800,
+    "ssoSessionMaxLifespan": 28800,
+    "offlineSessionIdleTimeout": 28800,
+  
+    "passwordPolicy": "length(8) and upperCase(1) and digits(1) and specialChars(1) and passwordHistory(5)",
+  
+    "roles": {
+      "realm": [
+        {
+          "name": "COMMUTER",
+          "description": "Read-only access — live tracking and schedule viewing",
+          "composite": false,
+          "clientRole": false
+        },
+        {
+          "name": "DRIVER",
+          "description": "Status updates and incident reporting",
+          "composite": false,
+          "clientRole": false
+        },
+        {
+          "name": "SCHEDULER",
+          "description": "Full access including dispatch and scheduling",
+          "composite": false,
+          "clientRole": false
+        }
+      ]
+    },
+  
+    "clients": [],
+    "groups": []
+  }
 
