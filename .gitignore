@@ -20,12 +20,19 @@ __pycache__/
 .venv/
 
 # Local-only Copilot and spec support
+.antigravity/
 .github/copilot-instructions.md
 .github/PULL_REQUEST_TEMPLATE.md
 .github/agents/
 .github/prompts/
 .github/skills/
 docs/spec-index/
+docs/issue-workflow.md
+docs/architecture-decisions.md
+docs/database-connections.md
+docs/observability.md
+docs/epics/
+docs/runbooks/deployment-rollback.md
 tools/spec/
 shared/stubs/*/README.md
 *.pdf

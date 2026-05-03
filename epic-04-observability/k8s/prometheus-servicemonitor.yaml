@@ -1,2 +1,119 @@
-﻿# TODO: Implement according to G4 guide and issue assignment.
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: mosquitto-sm
+  namespace: transit-platform
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: mosquitto
+  namespaceSelector:
+    matchNames:
+      - transit-edge
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
 
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kafka-sm
+  namespace: transit-platform
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: kafka
+  namespaceSelector:
+    matchNames:
+      - transit-streaming
+  endpoints:
+    - port: jmx-metrics
+      path: /metrics
+      interval: 15s
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kong-sm
+  namespace: transit-platform
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: kong-gateway
+  namespaceSelector:
+    matchNames:
+      - transit-security
+  endpoints:
+    - port: admin-api
+      path: /metrics
+      interval: 15s
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: keycloak-sm
+  namespace: transit-platform
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+  namespaceSelector:
+    matchNames:
+      - transit-security
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: postgres-sm
+  namespace: transit-platform
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: postgresql
+  namespaceSelector:
+    matchNames:
+      - transit-data
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: influxdb-sm
+  namespace: transit-platform
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: influxdb
+  namespaceSelector:
+    matchNames:
+      - transit-data
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s

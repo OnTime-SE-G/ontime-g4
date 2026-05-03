@@ -1,2 +1,32 @@
-﻿# TODO: Implement according to G4 guide and issue assignment.
+# Secret for Grafana Admin Password
+apiVersion: v1
+kind: Secret
+metadata:
+  name: monitoring-grafana-auth
+  namespace: transit-platform
+type: Opaque
+stringData:
+  admin-user: admin
+  admin-password: "SecureGrafanaPassword123!"
 
+---
+# Kong Route for Grafana (Ingress)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: transit-platform
+  annotations:
+    konghq.com/strip-path: "true"
+spec:
+  ingressClassName: kong
+  rules:
+    - http:
+        paths:
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: monitoring-grafana
+                port:
+                  number: 80
