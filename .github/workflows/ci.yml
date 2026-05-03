@@ -159,7 +159,7 @@ jobs:
       - name: Validate Kong config
         if: ${{ hashFiles('**/kong/kong.yaml') != '' }}
         run: |
-          deck validate -s epic-02-security/kong/kong.yaml
+          deck file validate epic-02-security/k8s/kong/kong.yaml
 
       - name: Lint OpenAPI specs (Spectral)
         if: ${{ hashFiles('shared/contracts/openapi/*.yml', 'shared/contracts/openapi/*.yaml') != '' }}
