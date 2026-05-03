@@ -1,4 +1,4 @@
-﻿# TODO
+﻿FROM postgis/postgis:16-3.4
 
-Implement according to G4 guide and issue assignment.
+COPY init/ /docker-entrypoint-initdb.d/
 

@@ -14,7 +14,3 @@ resources:
   - kong-deployment.yaml
   - kong-service.yaml
   - kong-hpa.yaml
-
-
-
-   

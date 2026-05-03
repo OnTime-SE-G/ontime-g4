@@ -1,4 +1,6 @@
-﻿# TODO
+﻿FROM eclipse-mosquitto:2.0
 
-Implement according to G4 guide and issue assignment.
+COPY mosquitto.conf /mosquitto/config/mosquitto.conf
+
+EXPOSE 1883 9001
 
