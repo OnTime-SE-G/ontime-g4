@@ -1,0 +1,176 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak-headless
+  namespace: transit-platform
+  labels:
+    app: keycloak
+    app.kubernetes.io/part-of: ontime
+spec:
+  clusterIP: None
+  selector:
+    app: keycloak
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak-service
+  namespace: transit-platform
+  labels:
+    app: keycloak
+    app.kubernetes.io/part-of: ontime
+spec:
+  type: ClusterIP
+  selector:
+    app: keycloak
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+
+metadata:
+  name: keycloak
+  namespace: transit-platform
+  labels:
+    app: keycloak
+    app.kubernetes.io/part-of: ontime
+    app.kubernetes.io/version: "23.0"
+
+spec:
+  serviceName: keycloak-headless
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: keycloak
+
+  template:
+    metadata:
+      labels:
+        app: keycloak
+        app.kubernetes.io/part-of: ontime
+
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:23.0
+          imagePullPolicy: IfNotPresent
+          args: ["start"]
+          
+          # Environment variables for configuring Keycloak (DB connection, admin credentials, URLs, etc.)
+          env:
+ 
+            - name: KC_DB
+              value: postgres
+            # Database keycloak_db — see postgres-init-script in transit-data
+            - name: KC_DB_URL
+              value: jdbc:postgresql://postgresql-service.transit-data.svc.cluster.local:5432/keycloak_db
+            - name: KC_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-db
+                  key: username
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-db
+                  key: password
+            - name: KEYCLOAK_ADMIN
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin
+                  key: username
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin
+                  key: password
+            - name: KC_PROXY
+              value: edge                  # use edge proxy mode
+            - name: KC_HOSTNAME_STRICT
+              value: "false"               # allow requests without strict hostname match
+            - name: KC_HOSTNAME_STRICT_HTTPS
+              value: "false"               # allow non-HTTPS for hostname strictness
+            - name: KC_HOSTNAME_URL
+              value: "http://10.100.220.147/auth"        # external Keycloak URL
+            - name: KC_HOSTNAME_ADMIN_URL
+              value: "http://10.100.220.147/auth"        # external admin URL
+            - name: KC_HTTP_ENABLED
+              value: "true"                # enable HTTP
+            - name: KC_HTTP_PORT
+              value: "8080"                # HTTP port
+            - name: KC_HTTP_RELATIVE_PATH
+              value: "/auth"               # Keycloak served under /auth
+            - name: KC_HEALTH_ENABLED
+              value: "true"                # expose health endpoints
+            - name: KC_LOG_LEVEL
+              value: INFO                  # set log level
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: management
+              containerPort: 9000
+              protocol: TCP
+
+          startupProbe:
+            httpGet:
+              path: /auth/health/started
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+
+          livenessProbe:
+            httpGet:
+              path: /auth/health/live
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 4
+
+          readinessProbe:
+            httpGet:
+              path: /auth/health/ready
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+              
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL

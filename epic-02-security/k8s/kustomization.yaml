@@ -14,6 +14,8 @@ resources:
   - kong-deployment.yaml
   - kong-service.yaml
   - kong-hpa.yaml
+  - keycloak/keycloak-deployment.yaml
+  - keycloak/keycloak-secrets.yaml
 
 
 

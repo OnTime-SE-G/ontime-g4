@@ -1,5 +1,11 @@
-﻿_format_version: "3.0"
+_format_version: "3.0"
 _transform: true
+
+# kong-proxy is LoadBalancer type but Minikube doesn't have a LoadBalancer controller, 
+# so the external IP never gets assigned. browser can't reach it because there's no actual external IP.
+# To test locally:
+#   kubectl port-forward -n transit-platform svc/kong-proxy 8088:80
+#   then open http://127.0.0.1:8088/auth/admin/
 
 services:
   - name: ontime-api
@@ -14,7 +20,7 @@ services:
           - POST
           - PUT
           - DELETE
-  
+
   - name: kong-status
     url: http://localhost:8001
     routes:
@@ -22,5 +28,23 @@ services:
         paths:
           - /health
         methods:
+          - HEAD
           - GET
-          
+
+  - name: keycloak-auth
+    url: http://keycloak-service:8080
+    routes:
+      - name: keycloak-auth-route
+        preserve_host: true
+        paths:
+          - /auth
+          - /auth/*
+        methods:
+          - HEAD
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - PATCH
+          - OPTIONS
+        strip_path: false
