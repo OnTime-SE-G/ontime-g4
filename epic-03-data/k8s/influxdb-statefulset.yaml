@@ -45,48 +45,48 @@ spec:
         app: influxdb
     spec:
       containers:
-      - name: influxdb
-        image: influxdb:2.7
-        ports:
-        - containerPort: 8086
-        env:
-        - name: DOCKER_INFLUXDB_INIT_MODE
-          value: "setup"
-        - name: DOCKER_INFLUXDB_INIT_USERNAME
-          value: "admin"
-        - name: DOCKER_INFLUXDB_INIT_ORG
-          value: "transit-org"
-        - name: DOCKER_INFLUXDB_INIT_BUCKET
-          value: "gps-telemetry"
-        - name: DOCKER_INFLUXDB_INIT_RETENTION
-          value: "168h"
-        - name: DOCKER_INFLUXDB_INIT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: influxdb-credentials
-              key: password
-        - name: DOCKER_INFLUXDB_INIT_ADMIN_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: influxdb-credentials
-              key: admin-token
-        volumeMounts:
-        - name: influxdb-storage
-          mountPath: /var/lib/influxdb2
-        - name: init-script-volume
-          mountPath: /docker-entrypoint-initdb.d/setup.sh
-          subPath: setup.sh
+        - name: influxdb
+          image: influxdb:2.7
+          ports:
+            - containerPort: 8086
+          env:
+            - name: DOCKER_INFLUXDB_INIT_MODE
+              value: "setup"
+            - name: DOCKER_INFLUXDB_INIT_USERNAME
+              value: "admin"
+            - name: DOCKER_INFLUXDB_INIT_ORG
+              value: "transit-org"
+            - name: DOCKER_INFLUXDB_INIT_BUCKET
+              value: "gps-telemetry"
+            - name: DOCKER_INFLUXDB_INIT_RETENTION
+              value: "168h"
+            - name: DOCKER_INFLUXDB_INIT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: influxdb-credentials
+                  key: password
+            - name: DOCKER_INFLUXDB_INIT_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: influxdb-credentials
+                  key: admin-token
+          volumeMounts:
+            - name: influxdb-storage
+              mountPath: /var/lib/influxdb2
+            - name: init-script-volume
+              mountPath: /docker-entrypoint-initdb.d/setup.sh
+              subPath: setup.sh
       volumes:
-      - name: init-script-volume
-        configMap:
-          name: influxdb-init-script
-          defaultMode: 0777
+        - name: init-script-volume
+          configMap:
+            name: influxdb-init-script
+            defaultMode: 0777
   volumeClaimTemplates:
-  - metadata:
-      name: influxdb-storage
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      #storageClassName: standard #just to test locally
-      resources:
-        requests:
-          storage: 15Gi
+    - metadata:
+        name: influxdb-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        #storageClassName: standard #just to test locally
+        resources:
+          requests:
+            storage: 15Gi
