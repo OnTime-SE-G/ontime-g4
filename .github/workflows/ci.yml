@@ -210,7 +210,18 @@ jobs:
             service=$(basename "$context")
             image="$REGISTRY/$repo_lc/g4-$service:$GITHUB_SHA"
             docker buildx build --push -t "$image" -f "$file" "$context"
+            # We explicitly export the last built image name to an environment variable so Trivy can scan it
+            echo "LAST_BUILT_IMAGE=$image" >> $GITHUB_ENV
           done < dockerfiles.txt
+
+      - name: Scan image for vulnerabilities (Trivy)
+        if: ${{ steps.dockerfiles.outputs.count != '0' }}
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.LAST_BUILT_IMAGE }}
+          format: 'sarif'
+          exit-code: '1'
+          severity: 'CRITICAL'
 
   integration_test:
     runs-on: ubuntu-latest
@@ -242,8 +253,8 @@ jobs:
       - name: Configure kubectl
         run: |
           if [ -z "${{ secrets.KUBE_CONFIG }}" ]; then
-            echo "KUBE_CONFIG not set, skipping deploy."
-            exit 0
+            echo "KUBE_CONFIG not set, failing deployment."
+            exit 1
           fi
           mkdir -p ~/.kube
           echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
@@ -252,7 +263,10 @@ jobs:
       - name: Deploy Helm chart
         run: |
           if [ -z "${{ secrets.KUBE_CONFIG }}" ]; then
-            exit 0
+            echo "KUBE_CONFIG not set, failing deployment."
+            exit 1
           fi
           helm upgrade --install transit-platform ./epic-05-cicd/helm/transit-platform \
-            -n transit-platform --create-namespace --wait --timeout 5m
+            -n transit-platform --create-namespace \
+            --set image.tag=${{ github.sha }} \
+            --wait --timeout 5m
