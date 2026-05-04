@@ -41,3 +41,8 @@ shared/stubs/*/README.md
 .DS_Store
 Thumbs.db
 *.tar
+
+
+*.tfstate
+*.tfstate.*
+.terraform/
