@@ -1,5 +1,3 @@
-﻿# TODO: Implement according to G4 guide and issue assignment.
-
 ---
 apiVersion: v1
 kind: Service
@@ -8,8 +6,23 @@ metadata:
   namespace: transit-data
 spec:
   type: ClusterIP
-  ports:
-    - port: 5432
-      targetPort: 5432
   selector:
     app: postgresql
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: transit-data
+spec:
+  type: ClusterIP
+  selector:
+    app: postgresql
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

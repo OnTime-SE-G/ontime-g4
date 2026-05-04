@@ -1,11 +1,16 @@
-﻿-- TODO: Implement according to G4 guide and issue assignment.
+-- flyway:executeInTransaction=false
 
--- GIST index on halt locations for proximity searches
-CREATE INDEX idx_halts_location_gist ON halts USING GIST (location);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_halts_location_gist
+    ON halts
+    USING GIST ((location::geography));
 
--- GIST index on route polylines for route rendering
-CREATE INDEX idx_routes_polyline_gist ON routes USING GIST (route_polyline);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_halts_location_geometry_gist
+    ON halts
+    USING GIST (location);
 
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_routes_polyline_gist
+    ON routes
+    USING GIST (route_polyline);
 
 ANALYZE halts;
 ANALYZE routes;
