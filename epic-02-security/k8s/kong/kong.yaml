@@ -1,13 +1,39 @@
 _format_version: "3.0"
 _transform: true
 
-# kong-proxy is LoadBalancer type but Minikube doesn't have a LoadBalancer controller, 
-# so the external IP never gets assigned. browser can't reach it because there's no actual external IP.
+# ─────────────────────────────────────────────────────────────────────────────
+# JWT Consumer — represents Keycloak as the token issuer.
+# Kong matches the 'iss' claim in incoming JWTs to this credential.
+# key must exactly match the 'iss' claim in Keycloak JWTs.
+# ─────────────────────────────────────────────────────────────────────────────
+consumers:
+  - username: keycloak-issuer
+    jwt_secrets:
+      - algorithm: RS256
+        key: "http://localhost:8080/auth/realms/transit-system"  # iss value
+        rsa_public_key: |
+          -----BEGIN PUBLIC KEY-----
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqxt2xK5LuIvJifaOprZG
+          fjGAALaV5bYpU78MZNddlNRl7iBVPbH4LVZRjIrqMIMZ/x+HMCm9O6yuf6oRt2RD
+          ZnPTTyE6BlsLC0CSQbEGUn6OMggxZeJzP+uRXiGMlJWVVYwzeQBpsyXJBlVKfeO7
+          jIbAX/xTKqhL7gqj58VVABqig9rwa0DkrfjzyDjANHZsrJDkMjf/gfVawDLLsxSI
+          WQcqkbyRIiPNIDNi7YYJ8HagcYG43zQSYCVKbLNMzSWbKWBUzHmEnXS7ZZ7kwUmc
+          GajXqrJMFXb5y5sZWg4MdrEvvh2faQfYXRBqu+DHJpxY6FZ5YM7Hnw4FQycMxhBD
+          NwIDAQAB
+          -----END PUBLIC KEY-----
+     
 # To test locally:
 #   kubectl port-forward -n transit-platform svc/kong-proxy 8088:80
 #   then open http://127.0.0.1:8088/auth/admin/
 
+# ─────────────────────────────────────────────────────────────────────────────
+# IMPORTANT: Every new microservice route MUST include the jwt + pre-function
+# plugins block. See ontime-api-route as the reference implementation.
+# Routes without these plugins will not be protected by JWT validation.
+# ─────────────────────────────────────────────────────────────────────────────
+
 services:
+  # ── Protected microservice — JWT required ──────────────────────────────────
   - name: ontime-api
     url: http://ontime-api:8000
     routes:
@@ -20,7 +46,55 @@ services:
           - POST
           - PUT
           - DELETE
+        plugins:
+          - name: jwt
+            config:
+              header_names:
+                - Authorization
+              claims_to_verify:
+                - exp
+              key_claim_name: iss
+          - name: pre-function
+            config:
+              access:
+                - |
+                  kong.service.request.set_header("X-Kong-Lua", "active")
+                  local ok, err = pcall(function()
+                    local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
+                    local auth_header = kong.request.get_header("Authorization")
+                    if not auth_header then return end
+                    local token = auth_header:match("Bearer%s+(.+)")
+                    if not token then return end
+                    local jwt_obj, err = jwt_decoder:new(token)
+                    if not jwt_obj then
+                      kong.log.err("JWT Parser Error: ", err)
+                      return
+                    end
+                    local claims = jwt_obj.claims
+                    if type(claims) ~= "table" then return end
+                    kong.service.request.set_header("X-User-Id", tostring(claims.sub or ""))
+                    local role = ""
+                    local realm_access = claims.realm_access
+                    if type(realm_access) == "table" and type(realm_access.roles) == "table" then
+                      local skip = { offline_access = true, uma_authorization = true }
+                      for _, r in ipairs(realm_access.roles) do
+                        local r_str = tostring(r)
+                        if not skip[r_str] and not r_str:find("^default%-roles") then
+                          role = r_str
+                          break
+                        end
+                      end
+                    end
+                    kong.service.request.set_header("X-User-Role", role)
+                    kong.service.request.set_header("Authorization", nil)
+                    kong.service.request.clear_header("Authorization")
+                  end)
+                  if not ok then
+                    kong.log.err("CRITICAL LUA ERROR: ", err)
+                  end
 
+
+  # ── Health — public, no JWT ────────────────────────────────────────────────
   - name: kong-status
     url: http://localhost:8001
     routes:
@@ -31,8 +105,9 @@ services:
           - HEAD
           - GET
 
+  # ── Keycloak auth — public, no JWT ────────────────────────────────────────
   - name: keycloak-auth
-    url: http://keycloak-service:8080
+    url: http://keycloak-service.transit-platform.svc.cluster.local:8080
     routes:
       - name: keycloak-auth-route
         preserve_host: true
@@ -48,3 +123,94 @@ services:
           - PATCH
           - OPTIONS
         strip_path: false
+
+  - name: httpbin
+    url: http://httpbin.transit-platform.svc.cluster.local:80
+    routes:
+      - name: httpbin-route
+        paths:
+          - /test/headers
+        strip_path: false
+        methods:
+          - GET
+
+        plugins:
+
+          - name: jwt
+            config:
+              claims_to_verify:
+                - exp
+              key_claim_name: iss
+              secret_is_base64: false
+
+          # 🔁 2. Rewrite path → /headers
+          - name: request-transformer
+            config:
+              replace:
+                uri: "/headers"
+
+          # 🧠 3. Extract verified JWT claims → headers
+          - name: pre-function
+            config:
+              access:
+                - |
+                  local ok, err = xpcall(function()
+
+                    -- Get Authorization header
+                    local auth_header = kong.request.get_header("Authorization")
+                    if not auth_header then return end
+
+                    local token = auth_header:match("Bearer%s+(.+)")
+                    if not token then return end
+
+                    -- Extract payload (middle part)
+                    local payload = token:match("^[^.]+%.([^.]+)%.")
+                    if not payload then return end
+
+                    -- Base64URL decode
+                    payload = payload:gsub("-", "+"):gsub("_", "/")
+                    local pad = #payload % 4
+                    if pad == 2 then payload = payload .. "=="
+                    elseif pad == 3 then payload = payload .. "=" end
+
+                    local decoded = ngx.decode_base64(payload)
+                    if not decoded then return end
+
+                    -- Parse JSON (SAFE: cjson is preloaded internally)
+                    local claims = cjson.decode(decoded)
+                    if type(claims) ~= "table" then return end
+
+                     
+                    -- -----------------------------
+                    -- User ID
+                    -- -----------------------------
+                    kong.service.request.set_header("X-User-Id", tostring(claims.sub or ""))
+
+                    -- -----------------------------
+                    -- Role extraction (SAFE)
+                    -- -----------------------------
+                    local role = ""
+                    local realm_access = claims.realm_access
+
+                    if type(realm_access) == "table" and type(realm_access.roles) == "table" then
+                      for _, r in ipairs(realm_access.roles) do
+                        local r_str = tostring(r)
+
+                        if r_str ~= "offline_access"
+                          and r_str ~= "uma_authorization"
+                          and not r_str:find("^default%-roles") then
+                          role = r_str
+                          break
+                        end
+                      end
+                    end
+
+                    kong.service.request.set_header("X-User-Role", role)
+
+                    -- -----------------------------
+                    -- Remove Authorization header
+                    -- -----------------------------
+                    kong.service.request.clear_header("Authorization")
+                  end, function(e)
+                    kong.service.request.set_header("X-Debug-Crash", tostring(e))
+                  end)
