@@ -205,23 +205,29 @@ jobs:
         if: ${{ steps.dockerfiles.outputs.count != '0' }}
         run: |
           repo_lc=$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          : > images.txt
           while IFS= read -r file; do
             context=$(dirname "$file")
             service=$(basename "$context")
             image="$REGISTRY/$repo_lc/g4-$service:$GITHUB_SHA"
             docker buildx build --push -t "$image" -f "$file" "$context"
-            # We explicitly export the last built image name to an environment variable so Trivy can scan it
-            echo "LAST_BUILT_IMAGE=$image" >> $GITHUB_ENV
+            echo "$image" >> images.txt
           done < dockerfiles.txt
 
       - name: Scan image for vulnerabilities (Trivy)
         if: ${{ steps.dockerfiles.outputs.count != '0' }}
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.LAST_BUILT_IMAGE }}
-          format: 'sarif'
-          exit-code: '1'
-          severity: 'CRITICAL'
+        run: |
+          if [ ! -s images.txt ]; then
+            echo "No images to scan."
+            exit 0
+          fi
+          while IFS= read -r image; do
+            echo "Scanning $image"
+            docker run --rm \
+              -v "$HOME/.docker/config.json:/root/.docker/config.json:ro" \
+              aquasec/trivy:0.50.1 \
+              image --exit-code 1 --severity CRITICAL "$image"
+          done < images.txt
 
   integration_test:
     runs-on: ubuntu-latest
@@ -230,14 +236,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Stand up minimal stack (Docker Compose)
+        run: |
+          if [ -f docker-compose.yml ]; then
+            compose_file="docker-compose.yml"
+          elif [ -f epic-05-cicd/docker-compose.yml ]; then
+            compose_file="epic-05-cicd/docker-compose.yml"
+          else
+            echo "SKIP_COMPOSE=true" >> "$GITHUB_ENV"
+            echo "No docker-compose.yml found; skipping stack startup."
+            exit 0
+          fi
+          echo "COMPOSE_FILE=$compose_file" >> "$GITHUB_ENV"
+          docker compose -f "$compose_file" up -d
+
       - name: Run smoke tests
         if: ${{ hashFiles('epic-05-cicd/tests/smoke-test.sh') != '' }}
         run: |
+          if [ "${SKIP_COMPOSE:-}" = "true" ]; then
+            echo "Skipping smoke tests (no compose stack)."
+            exit 0
+          fi
           if grep -q "TODO" epic-05-cicd/tests/smoke-test.sh; then
             echo "Smoke test placeholder detected, skipping."
             exit 0
           fi
           bash epic-05-cicd/tests/smoke-test.sh
+
+      - name: Tear down stack
+        if: ${{ always() && env.COMPOSE_FILE != '' }}
+        run: docker compose -f "$COMPOSE_FILE" down
 
   deploy:
     runs-on: ubuntu-latest
@@ -270,3 +298,4 @@ jobs:
             -n transit-platform --create-namespace \
             --set image.tag=${{ github.sha }} \
             --wait --timeout 5m
+
