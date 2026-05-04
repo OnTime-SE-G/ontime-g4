@@ -1,18 +1,18 @@
-﻿# TODO: Implement according to G4 guide and issue assignment.
-
----
-apiVersion: v1
+﻿apiVersion: v1
 kind: ConfigMap
 metadata:
   name: influxdb-init-script
   namespace: transit-data
 data:
   setup.sh: |
-    #!/bin/bash
-    set -e
-    sleep 5
-    influx bucket create -n gps-aggregates -o transit-org -r 2160h -t $DOCKER_INFLUXDB_INIT_ADMIN_TOKEN
+    #!/bin/sh
+    set -eu
 
+    influx bucket create \
+      --name gps-aggregates \
+      --org "$DOCKER_INFLUXDB_INIT_ORG" \
+      --retention 2160h \
+      --token "$DOCKER_INFLUXDB_INIT_ADMIN_TOKEN" || true
 ---
 apiVersion: v1
 kind: Service
@@ -20,13 +20,29 @@ metadata:
   name: influxdb-service
   namespace: transit-data
 spec:
+  type: ClusterIP
   selector:
     app: influxdb
   ports:
-    - protocol: TCP
+    - name: http
+      protocol: TCP
       port: 8086
-      targetPort: 8086
-
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: influxdb
+  namespace: transit-data
+spec:
+  type: ClusterIP
+  selector:
+    app: influxdb
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8086
+      targetPort: http
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -34,7 +50,7 @@ metadata:
   name: influxdb
   namespace: transit-data
 spec:
-  serviceName: "influxdb-service"
+  serviceName: influxdb-service
   replicas: 1
   selector:
     matchLabels:
@@ -47,46 +63,78 @@ spec:
       containers:
         - name: influxdb
           image: influxdb:2.7
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8086
+            - name: http
+              containerPort: 8086
           env:
             - name: DOCKER_INFLUXDB_INIT_MODE
-              value: "setup"
+              value: setup
             - name: DOCKER_INFLUXDB_INIT_USERNAME
-              value: "admin"
-            - name: DOCKER_INFLUXDB_INIT_ORG
-              value: "transit-org"
-            - name: DOCKER_INFLUXDB_INIT_BUCKET
-              value: "gps-telemetry"
-            - name: DOCKER_INFLUXDB_INIT_RETENTION
-              value: "168h"
+              valueFrom:
+                secretKeyRef:
+                  name: influxdb-credentials
+                  key: username
             - name: DOCKER_INFLUXDB_INIT_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: influxdb-credentials
                   key: password
+            - name: DOCKER_INFLUXDB_INIT_ORG
+              value: ontime
+            - name: DOCKER_INFLUXDB_INIT_BUCKET
+              value: telemetry
             - name: DOCKER_INFLUXDB_INIT_ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: influxdb-credentials
                   key: admin-token
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 45
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
           volumeMounts:
             - name: influxdb-storage
               mountPath: /var/lib/influxdb2
+            - name: influxdb-config
+              mountPath: /etc/influxdb2
             - name: init-script-volume
               mountPath: /docker-entrypoint-initdb.d/setup.sh
               subPath: setup.sh
+              readOnly: true
       volumes:
         - name: init-script-volume
           configMap:
             name: influxdb-init-script
-            defaultMode: 0777
+            defaultMode: 0755
   volumeClaimTemplates:
     - metadata:
         name: influxdb-storage
       spec:
-        accessModes: ["ReadWriteOnce"]
-        #storageClassName: standard #just to test locally
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: do-block-storage
         resources:
           requests:
             storage: 15Gi
+    - metadata:
+        name: influxdb-config
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: do-block-storage
+        resources:
+          requests:
+            storage: 1Gi
