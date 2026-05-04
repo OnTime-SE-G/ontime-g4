@@ -1,2 +1,80 @@
-﻿# TODO: Implement according to G4 guide and issue assignment.
+---
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: transit_db
+      POSTGRES_USER: transit_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U transit_admin -d transit_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
+  influxdb:
+    image: influxdb:2.7
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_PASSWORD:?set INFLUXDB_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: transit-org
+      DOCKER_INFLUXDB_INIT_BUCKET: gps-telemetry
+      DOCKER_INFLUXDB_INIT_RETENTION: 168h
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_ADMIN_TOKEN:?set INFLUXDB_ADMIN_TOKEN}
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - ./influxdb/setup.sh:/docker-entrypoint-initdb.d/setup.sh:ro
+    healthcheck:
+      test: ["CMD", "influx", "ping", "--host", "http://localhost:8086"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  flyway:
+    image: flyway/flyway:10-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      FLYWAY_TRANSIT_URL: jdbc:postgresql://postgres:5432/transit_db
+      FLYWAY_ONTIME_URL: jdbc:postgresql://postgres:5432/ontime_db
+      FLYWAY_USER: transit_admin
+      FLYWAY_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      FLYWAY_CONNECT_RETRIES: "60"
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+      FLYWAY_REPEATABLE_SQL_MIGRATION_PREFIX: R1
+      FLYWAY_EXECUTE_IN_TRANSACTION: "false"
+    entrypoint:
+      - /bin/sh
+      - -c
+    command:
+      - |
+        set -eu
+        /flyway/flyway -url="$${FLYWAY_TRANSIT_URL}" migrate
+        /flyway/flyway -url="$${FLYWAY_ONTIME_URL}" migrate
+    volumes:
+      - ./migrations:/flyway/sql:ro
+
+volumes:
+  postgres-data:
+  influxdb-data:
