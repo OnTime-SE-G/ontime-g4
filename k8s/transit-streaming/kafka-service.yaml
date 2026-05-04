@@ -1,0 +1,36 @@
+#  kafka-service.yaml
+
+# Headless Service for internal broker/controller communication
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-headless
+  namespace: transit-streaming
+spec:
+  clusterIP: None
+  ports:
+    - name: broker
+      port: 9092
+      protocol: TCP
+    - name: controller
+      port: 9093
+      protocol: TCP
+  selector:
+    app: kafka
+
+---
+# ClusterIP Service for G2 Flink and G4 MQTT Bridge clients
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: transit-streaming
+spec:
+  type: ClusterIP
+  ports:
+    - name: broker
+      port: 9092
+      protocol: TCP
+      targetPort: 9092
+  selector:
+    app: kafka

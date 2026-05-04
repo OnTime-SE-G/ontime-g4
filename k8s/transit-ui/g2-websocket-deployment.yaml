@@ -1,0 +1,41 @@
+# k8s/transit-ui/g2-websocket-deployment.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: g2-websocket-service
+  namespace: transit-ui
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+  selector:
+    app: g2-websocket
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: g2-websocket-service
+  namespace: transit-ui
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: g2-websocket
+  template:
+    metadata:
+      labels:
+        app: g2-websocket
+    spec:
+      containers:
+        - name: websocket
+          # Assuming G2 pushed their code to this Docker image:
+          image: ghcr.io/your-org/ontime-g2-websocket:latest 
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            # Tell G2's FastAPI code where your Redis is
+            - name: REDIS_URL
+              value: "redis://redis-service.transit-ui.svc.cluster.local:6379"

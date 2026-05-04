@@ -1,0 +1,29 @@
+# k8s/transit-intelligence/g2-ingestion-deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: g2-ingestion-service
+  namespace: transit-intelligence
+spec:
+  replicas: 1 # G2's Python script pulling from MQTT
+  selector:
+    matchLabels:
+      app: g2-ingestion
+  template:
+    metadata:
+      labels:
+        app: g2-ingestion
+    spec:
+      containers:
+        - name: ingestion
+          # Assuming G2 pushed their code to this Docker image:
+          image: ghcr.io/your-org/ontime-g2-ingestion:latest 
+          imagePullPolicy: IfNotPresent
+          env:
+            # Tell G2's code where your HiveMQ broker is
+            - name: MQTT_BROKER_URL
+              value: "tcp://hivemq-service.transit-edge.svc.cluster.local:1883"
+            # Tell G2's code where your KRaft cluster is
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka.transit-streaming.svc.cluster.local:9092"

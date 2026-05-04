@@ -1,0 +1,73 @@
+#  kafka-statefulset.yaml
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+  namespace: transit-streaming
+spec:
+  serviceName: kafka-headless
+  replicas: 3
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+        - name: kafka
+          image: confluentinc/cp-kafka:7.8.3
+          command:
+            - /bin/bash
+            - -c
+            - |
+              # 1. Extract ordinal index (e.g., kafka-1 -> 1)
+              export NODE_ID=${HOSTNAME##*-}
+              export FQDN="${HOSTNAME}.kafka-headless.transit-streaming.svc.cluster.local"
+              
+              echo "===> Writing server.properties..."
+              cat <<EOF > /tmp/server.properties
+              node.id=$NODE_ID
+              process.roles=broker,controller
+              controller.quorum.voters=0@kafka-0.kafka-headless.transit-streaming.svc.cluster.local:9093,1@kafka-1.kafka-headless.transit-streaming.svc.cluster.local:9093,2@kafka-2.kafka-headless.transit-streaming.svc.cluster.local:9093
+              listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+              advertised.listeners=PLAINTEXT://$FQDN:9092
+              controller.listener.names=CONTROLLER
+              listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+              inter.broker.listener.name=PLAINTEXT
+              log.dirs=/var/lib/kafka/data
+              offsets.topic.replication.factor=3
+              default.replication.factor=3
+              min.insync.replicas=2
+              EOF
+              
+              # 2. Format KRaft storage if it doesn't exist
+              if [ ! -f /var/lib/kafka/data/meta.properties ]; then
+                echo "===> Formatting KRaft storage..."
+                kafka-storage format -t $CLUSTER_ID -c /tmp/server.properties
+              fi
+              
+              # 3. Boot native Kafka
+              echo "===> Starting Kafka..."
+              exec kafka-server-start /tmp/server.properties
+          ports:
+            - containerPort: 9092
+              name: broker
+            - containerPort: 9093
+              name: controller
+          env:
+            - name: CLUSTER_ID
+              value: "1L6g7nGhU-eAKfL--X25wo"
+          volumeMounts:
+            - name: kafka-data
+              mountPath: /var/lib/kafka/data
+  volumeClaimTemplates:
+    - metadata:
+        name: kafka-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 20Gi
