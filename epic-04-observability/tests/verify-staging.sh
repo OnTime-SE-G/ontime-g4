@@ -42,4 +42,27 @@ echo "SUCCESS: PostgreSQL metrics query successful."
 
 # Cleanup
 kill $PF_PID
-echo "=== Acceptance Tests Complete ==="
+
+echo "=== G4-31/34 Staging Verification ==="
+
+echo "4. Checking Alerting Rules..."
+kubectl get prometheusrule g4-alerting-rules -n transit-platform
+echo "SUCCESS: G4 alerting rules applied."
+
+echo "5. Checking Loki & Promtail..."
+kubectl get pods -n transit-platform | grep loki
+kubectl get daemonset promtail -n transit-platform
+echo "SUCCESS: Loki/Promtail pods exist."
+
+echo "6. Checking Jaeger Tracing..."
+kubectl get pods -n transit-platform | grep jaeger
+echo "SUCCESS: Jaeger pods exist."
+
+echo "7. Checking HPA Configurations..."
+kubectl get hpa commuter-nextjs-hpa -n transit-ui
+kubectl get hpa socket-io-adapter-hpa -n transit-ui
+kubectl get hpa flink-taskmanager-hpa -n transit-intelligence
+kubectl get hpa eta-grpc-service-hpa -n transit-intelligence
+echo "SUCCESS: All 4 HPAs are configured."
+
+echo "=== All Epic 04 Verification Complete ==="

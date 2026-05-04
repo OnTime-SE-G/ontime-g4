@@ -1,4 +1,12 @@
-groups:
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: g4-alerting-rules
+  namespace: transit-platform
+  labels:
+    release: monitoring
+spec:
+  groups:
   - name: g4-observability.rules
     rules:
     - alert: MQTTHighLatency
@@ -8,7 +16,7 @@ groups:
         severity: critical
       annotations:
         summary: "MQTT broker P95 queue delay exceeds 1 second"
-        description: "MQTT broker P95 queue delay is {{ $value }}s, which exceeds the 1s threshold for 30 seconds."
+        description: "MQTT broker P95 queue delay is {{ $value }}s, which exceeds the 1s threshold for 30 seconds. GPS data pipeline may be degraded."
 
     - alert: G3HighErrorRate
       expr: |
@@ -20,4 +28,4 @@ groups:
         severity: critical
       annotations:
         summary: "G3 commuter frontend 5xx error rate exceeds 5%"
-        description: "G3 commuter frontend 5xx error rate is {{ $value }}, which exceeds the 5% threshold for 60 seconds."
+        description: "G3 commuter frontend 5xx error rate is {{ $value | humanizePercentage }}, which exceeds the 5% threshold for 60 seconds."

@@ -1,2 +1,407 @@
-﻿{}
-
+{
+  "title": "G4 Platform \u2014 Golden Signals",
+  "uid": "g4-golden-signals",
+  "refresh": "10s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "title": "Kong",
+      "type": "row",
+      "id": 1,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "title": "Kong RPS",
+      "type": "timeseries",
+      "id": 2,
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(kong_http_requests_total[5m]))",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Kong P95 Latency",
+      "type": "timeseries",
+      "id": 3,
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(kong_latency_bucket[5m])) by (le))",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Kong 5xx Error Rate",
+      "type": "timeseries",
+      "id": 4,
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(kong_http_requests_total{status=~'5..'}[5m])) / sum(rate(kong_http_requests_total[5m]))",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Kong CPU Usage",
+      "type": "timeseries",
+      "id": 5,
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{pod=~'kong.*'}[5m]))",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "MQTT Broker",
+      "type": "row",
+      "id": 6,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "panels": []
+    },
+    {
+      "title": "Connected Clients",
+      "type": "timeseries",
+      "id": 7,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 10
+      },
+      "targets": [
+        {
+          "expr": "mqtt_broker_clients_connected",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Message Rate",
+      "type": "timeseries",
+      "id": 8,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 10
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(mqtt_broker_messages_received_total[5m]))",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Queue Delay P95",
+      "type": "timeseries",
+      "id": 9,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 10
+      },
+      "targets": [
+        {
+          "expr": "mqtt_broker_queue_delay_seconds{quantile='0.95'}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Kafka",
+      "type": "row",
+      "id": 10,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "panels": []
+    },
+    {
+      "title": "Consumer Lag (raw.gps)",
+      "type": "timeseries",
+      "id": 11,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 19
+      },
+      "targets": [
+        {
+          "expr": "sum(kafka_consumer_group_lag{topic='raw.gps'})",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Producer Throughput",
+      "type": "timeseries",
+      "id": 12,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 19
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(kafka_server_brokertopicmetrics_messagesin_total[5m]))",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Under-replicated Partitions",
+      "type": "timeseries",
+      "id": 13,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 19
+      },
+      "targets": [
+        {
+          "expr": "sum(kafka_server_replicamanager_underreplicatedpartitions)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "PostgreSQL",
+      "type": "row",
+      "id": 14,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "panels": []
+    },
+    {
+      "title": "Query Rate",
+      "type": "timeseries",
+      "id": 15,
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 28
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(pg_stat_database_xact_commit[5m])) + sum(rate(pg_stat_database_xact_rollback[5m]))",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "P95 Query Latency",
+      "type": "timeseries",
+      "id": 16,
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 28
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(pg_stat_statements_seconds_bucket[5m])) by (le))",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Active Connections",
+      "type": "timeseries",
+      "id": 17,
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 28
+      },
+      "targets": [
+        {
+          "expr": "sum(pg_stat_database_numbackends)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "CPU Usage",
+      "type": "timeseries",
+      "id": 18,
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 28
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{pod=~'postgresql.*'}[5m]))",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "InfluxDB",
+      "type": "row",
+      "id": 19,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "panels": []
+    },
+    {
+      "title": "Write Rate",
+      "type": "timeseries",
+      "id": 20,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 37
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(influxdb_http_request_duration_seconds_count{path='/api/v2/write'}[5m]))",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Query Rate",
+      "type": "timeseries",
+      "id": 21,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 37
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(influxdb_http_request_duration_seconds_count{path='/api/v2/query'}[5m]))",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Storage Used",
+      "type": "timeseries",
+      "id": 22,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 37
+      },
+      "targets": [
+        {
+          "expr": "sum(influxdb_storage_bytes)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "System",
+      "type": "row",
+      "id": 23,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 45
+      },
+      "panels": []
+    },
+    {
+      "title": "End-to-End GPS Latency P95",
+      "type": "timeseries",
+      "id": 24,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 46
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(gps_end_to_end_latency_seconds_bucket[5m])) by (le))",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Pod Count per Service",
+      "type": "timeseries",
+      "id": 25,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 46
+      },
+      "targets": [
+        {
+          "expr": "sum(kube_pod_status_phase{phase='Running'}) by (pod)",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 36
+}
