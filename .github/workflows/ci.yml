@@ -1,0 +1,301 @@
+name: G4 CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install lint tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install yamllint
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Lint YAML
+        if: ${{ hashFiles('**/*.yml', '**/*.yaml') != '' }}
+        run: |
+          if [ -f .yamllint.yml ]; then
+            yamllint -c .yamllint.yml .
+          else
+            yamllint .
+          fi
+
+      - name: Install kubeconform
+        if: ${{ hashFiles('**/k8s/**/*.yml', '**/k8s/**/*.yaml') != '' }}
+        run: |
+          curl -sL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz
+          sudo mv kubeconform /usr/local/bin/kubeconform
+
+      - name: Validate Kubernetes manifests
+        if: ${{ hashFiles('**/k8s/**/*.yml', '**/k8s/**/*.yaml') != '' }}
+        run: |
+          find . -type f \( -name "*.yml" -o -name "*.yaml" \) -path "*/k8s/*" \
+            ! -name "*values*.yml" ! -name "*values*.yaml" ! -path "*/kong/kong.yaml" -print0 \
+            | xargs -0 kubeconform -strict -summary -ignore-missing-schemas -kubernetes-version 1.29.0
+
+      - name: Lint shell scripts
+        if: ${{ hashFiles('**/*.sh') != '' }}
+        run: |
+          find . -type f -name "*.sh" -print0 | xargs -0 shellcheck
+
+  unit_test:
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect Python tests
+        id: pytests
+        run: |
+          if find . -type f -name "test_*.py" -o -path "*/tests/*.py" | grep -q .; then
+            echo "has_pytests=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_pytests=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python
+        if: ${{ steps.pytests.outputs.has_pytests == 'true' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python test deps
+        if: ${{ steps.pytests.outputs.has_pytests == 'true' }}
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          elif [ -f requirements-dev.txt ]; then
+            pip install -r requirements-dev.txt
+          else
+            pip install pytest pytest-cov
+          fi
+
+      - name: Execute pytest
+        if: ${{ steps.pytests.outputs.has_pytests == 'true' }}
+        run: |
+          pytest --cov=. --cov-report=xml
+
+      - name: Enforce coverage gate (>= 70%)
+        if: ${{ steps.pytests.outputs.has_pytests == 'true' }}
+        run: |
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          tree = ET.parse('coverage.xml')
+          rate = float(tree.getroot().attrib.get('line-rate', 0))
+          if rate < 0.70:
+              raise SystemExit(f"Coverage gate failed: {rate:.2%} < 70%")
+          print(f"Coverage OK: {rate:.2%}")
+          PY
+
+      - name: Detect Node tests
+        id: nodetests
+        run: |
+          if [ -f package.json ]; then
+            node -e "const p=require('./package.json');process.exit(p.scripts&&p.scripts.test?0:1)" \
+              && echo "has_node_tests=true" >> "$GITHUB_OUTPUT" \
+              || echo "has_node_tests=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_node_tests=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node
+        if: ${{ steps.nodetests.outputs.has_node_tests == 'true' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Node deps
+        if: ${{ steps.nodetests.outputs.has_node_tests == 'true' }}
+        run: npm ci
+
+      - name: Run Node tests
+        if: ${{ steps.nodetests.outputs.has_node_tests == 'true' }}
+        run: npm test -- --ci
+
+      - name: Upload coverage artifact
+        if: ${{ steps.pytests.outputs.has_pytests == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+
+  contract_test:
+    runs-on: ubuntu-latest
+    needs: [unit_test]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install decK
+        if: ${{ hashFiles('**/kong/kong.yaml') != '' }}
+        run: |
+          curl -sL https://github.com/kong/deck/releases/download/v1.31.0/deck_1.31.0_linux_amd64.tar.gz | tar xz
+          sudo mv deck /usr/local/bin/deck
+
+      - name: Validate Kong config
+        if: ${{ hashFiles('**/kong/kong.yaml') != '' }}
+        run: |
+          deck file validate epic-02-security/k8s/kong/kong.yaml
+
+      - name: Lint OpenAPI specs (Spectral)
+        if: ${{ hashFiles('shared/contracts/openapi/*.yml', 'shared/contracts/openapi/*.yaml') != '' }}
+        run: |
+          docker run --rm -v "$PWD:/work" stoplight/spectral:6 \
+            lint /work/shared/contracts/openapi/transit-api.yaml --ruleset /work/.spectral.yaml
+
+  build_image:
+    runs-on: ubuntu-latest
+    needs: [contract_test]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find Dockerfiles
+        id: dockerfiles
+        run: |
+          mapfile -t files < <(find . -name Dockerfile -not -path "./.git/*")
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "count=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf '%s\n' "${files[@]}" > dockerfiles.txt
+          echo "count=${#files[@]}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        if: ${{ steps.dockerfiles.outputs.count != '0' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        if: ${{ steps.dockerfiles.outputs.count != '0' }}
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        if: ${{ steps.dockerfiles.outputs.count != '0' }}
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push images
+        if: ${{ steps.dockerfiles.outputs.count != '0' }}
+        run: |
+          repo_lc=$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          : > images.txt
+          while IFS= read -r file; do
+            context=$(dirname "$file")
+            service=$(basename "$context")
+            image="$REGISTRY/$repo_lc/g4-$service:$GITHUB_SHA"
+            docker buildx build --push -t "$image" -f "$file" "$context"
+            echo "$image" >> images.txt
+          done < dockerfiles.txt
+
+      - name: Scan image for vulnerabilities (Trivy)
+        if: ${{ steps.dockerfiles.outputs.count != '0' }}
+        run: |
+          if [ ! -s images.txt ]; then
+            echo "No images to scan."
+            exit 0
+          fi
+          while IFS= read -r image; do
+            echo "Scanning $image"
+            docker run --rm \
+              -v "$HOME/.docker/config.json:/root/.docker/config.json:ro" \
+              aquasec/trivy:0.50.1 \
+              image --exit-code 1 --severity CRITICAL "$image"
+          done < images.txt
+
+  integration_test:
+    runs-on: ubuntu-latest
+    needs: [build_image]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Stand up minimal stack (Docker Compose)
+        run: |
+          if [ -f docker-compose.yml ]; then
+            compose_file="docker-compose.yml"
+          elif [ -f epic-05-cicd/docker-compose.yml ]; then
+            compose_file="epic-05-cicd/docker-compose.yml"
+          else
+            echo "SKIP_COMPOSE=true" >> "$GITHUB_ENV"
+            echo "No docker-compose.yml found; skipping stack startup."
+            exit 0
+          fi
+          echo "COMPOSE_FILE=$compose_file" >> "$GITHUB_ENV"
+          docker compose -f "$compose_file" up -d
+
+      - name: Run smoke tests
+        if: ${{ hashFiles('epic-05-cicd/tests/smoke-test.sh') != '' }}
+        run: |
+          if [ "${SKIP_COMPOSE:-}" = "true" ]; then
+            echo "Skipping smoke tests (no compose stack)."
+            exit 0
+          fi
+          if grep -q "TODO" epic-05-cicd/tests/smoke-test.sh; then
+            echo "Smoke test placeholder detected, skipping."
+            exit 0
+          fi
+          bash epic-05-cicd/tests/smoke-test.sh
+
+      - name: Tear down stack
+        if: ${{ always() && env.COMPOSE_FILE != '' }}
+        run: docker compose -f "$COMPOSE_FILE" down
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [integration_test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Configure kubectl
+        run: |
+          if [ -z "${{ secrets.KUBE_CONFIG }}" ]; then
+            echo "KUBE_CONFIG not set, failing deployment."
+            exit 1
+          fi
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+          kubectl cluster-info
+
+      - name: Deploy Helm chart
+        run: |
+          if [ -z "${{ secrets.KUBE_CONFIG }}" ]; then
+            echo "KUBE_CONFIG not set, failing deployment."
+            exit 1
+          fi
+          helm upgrade --install transit-platform ./epic-05-cicd/helm/transit-platform \
+            -n transit-platform --create-namespace \
+            --set image.tag=${{ github.sha }} \
+            --wait --timeout 5m
+
