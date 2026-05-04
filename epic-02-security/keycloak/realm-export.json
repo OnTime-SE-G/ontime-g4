@@ -180,12 +180,12 @@
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "http://localhost:3001/*",
-        "https://scheduler.transit.lk/*"
+        "https://app.transit.lk/*",
+        "http://localhost:3000/*"
       ],
       "webOrigins": [
-        "https://scheduler.transit.lk",
-        "http://localhost:3001"
+        "https://app.transit.lk",
+        "http://localhost:3000"
       ],
       "notBefore": 0,
       "bearerOnly": false,
