@@ -162,10 +162,12 @@ jobs:
           deck file validate epic-02-security/k8s/kong/kong.yaml
 
       - name: Lint OpenAPI specs (Spectral)
-        if: ${{ hashFiles('shared/contracts/openapi/*.yml', 'shared/contracts/openapi/*.yaml') != '' }}
+        if: ${{ hashFiles('ontime-g4/shared/contracts/openapi/*.yml', 'ontime-g4/shared/contracts/openapi/*.yaml') != '' }}
         run: |
           docker run --rm -v "$PWD:/work" stoplight/spectral:6 \
-            lint /work/shared/contracts/openapi/transit-api.yaml --ruleset /work/.spectral.yaml
+            lint "/work/ontime-g4/shared/contracts/openapi/*.yml" \
+            "/work/ontime-g4/shared/contracts/openapi/*.yaml" \
+            --ruleset /work/ontime-g4/.spectral.yaml
 
   build_image:
     runs-on: ubuntu-latest
@@ -296,6 +298,6 @@ jobs:
           fi
           helm upgrade --install transit-platform ./epic-05-cicd/helm/transit-platform \
             -n transit-platform --create-namespace \
+            -f ./epic-05-cicd/helm/transit-platform/values-staging.yaml \
             --set image.tag=${{ github.sha }} \
             --wait --timeout 5m
-
