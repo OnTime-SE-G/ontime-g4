@@ -32,3 +32,6 @@ dependencies:
   - name: flyway-job
     version: "0.1.0"
     repository: "file://../flyway-job"
+  - name: g2-services
+    version: "0.1.0"
+    repository: "file://../g2-services"
