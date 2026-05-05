@@ -1,2 +1,27 @@
-﻿# TODO: Implement according to G4 guide and issue assignment.
+﻿openapi: 3.0.0
+info:
+	title: Transit API
+	version: 1.0.0
+	description: Kong Gateway health check for Transit API.
+servers:
+	- url: https://api.example.com
+paths:
+	/health:
+		get:
+			summary: Health check
+			operationId: getHealth
+			responses:
+				"200":
+					description: Service is healthy
+					content:
+						application/json:
+							schema:
+								type: object
+								additionalProperties: false
+								properties:
+									status:
+										type: string
+										example: ok
+								required:
+									- status
 

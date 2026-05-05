@@ -1,6 +1,4 @@
-extends: spectral:oas
-
+extends:
+  - spectral:oas
 rules:
-  operation-description: off
-  operation-tags: off
-  oas3-unused-component: warn
+  info-contact: off
