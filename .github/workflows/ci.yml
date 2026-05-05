@@ -298,6 +298,7 @@ jobs:
           fi
           helm upgrade --install transit-platform ./epic-05-cicd/helm/transit-platform \
             -n transit-platform --create-namespace \
+            -f ./epic-05-cicd/helm/transit-platform/values-staging.yaml \
             --set image.tag=${{ github.sha }} \
             --wait --timeout 5m
 
