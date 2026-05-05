@@ -3,6 +3,7 @@ kind: HorizontalPodAutoscaler
 
 metadata:
   name: kong-gateway
+  namespace: transit-platform
   
 spec:
   scaleTargetRef:
