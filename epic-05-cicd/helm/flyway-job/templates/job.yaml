@@ -1,2 +1,26 @@
-﻿# TODO: Implement according to G4 guide and issue assignment.
+﻿apiVersion: batch/v1
+kind: Job
+metadata:
+	name: {{ .Release.Name }}-flyway
+	labels:
+		app.kubernetes.io/name: flyway-job
+		app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+	template:
+		metadata:
+			labels:
+				app.kubernetes.io/name: flyway-job
+				app.kubernetes.io/instance: {{ .Release.Name }}
+		spec:
+			restartPolicy: OnFailure
+			containers:
+				- name: flyway
+					image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+					imagePullPolicy: {{ .Values.image.pullPolicy }}
+					args: ["info", "migrate"]
+					env:
+						{{- range $key, $value := .Values.env }}
+						- name: {{ $key }}
+							value: {{ $value | quote }}
+						{{- end }}
 
