@@ -1,41 +1,43 @@
-﻿apiVersion: apps/v1
+﻿# yamllint disable rule:braces
+# yamllint disable rule:syntax
+apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-	name: {{ .Release.Name }}-mosquitto
-	labels:
-		app.kubernetes.io/name: mosquitto
-		app.kubernetes.io/instance: {{ .Release.Name }}
+  name: "{{ .Release.Name }}-mosquitto"
+  labels:
+    app.kubernetes.io/name: mosquitto
+    app.kubernetes.io/instance: "{{ .Release.Name }}"
 spec:
-	serviceName: {{ .Release.Name }}-mosquitto
-	replicas: 1
-	selector:
-		matchLabels:
-			app.kubernetes.io/name: mosquitto
-			app.kubernetes.io/instance: {{ .Release.Name }}
-	template:
-		metadata:
-			labels:
-				app.kubernetes.io/name: mosquitto
-				app.kubernetes.io/instance: {{ .Release.Name }}
-		spec:
-			containers:
-				- name: mosquitto
-					image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-					imagePullPolicy: {{ .Values.image.pullPolicy }}
-					ports:
-						- name: mqtt
-							containerPort: 1883
-							protocol: TCP
-					volumeMounts:
-						- name: data
-							mountPath: /mosquitto/data
-	volumeClaimTemplates:
-		- metadata:
-				name: data
-			spec:
-				accessModes:
-					- ReadWriteOnce
-				resources:
-					requests:
-						storage: {{ .Values.persistence.size }}
+  serviceName: "{{ .Release.Name }}-mosquitto"
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mosquitto
+      app.kubernetes.io/instance: "{{ .Release.Name }}"
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mosquitto
+        app.kubernetes.io/instance: "{{ .Release.Name }}"
+    spec:
+      containers:
+        - name: mosquitto
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+          ports:
+            - name: mqtt
+              containerPort: 1883
+              protocol: TCP
+          volumeMounts:
+            - name: data
+              mountPath: /mosquitto/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: "{{ .Values.persistence.size }}"
 

@@ -2,93 +2,93 @@
 # Keep secrets out of git; use external secret managers in production.
 
 postgresql:
-	# Bitnami PostgreSQL values
-	auth:
-		# TODO: Replace with a Secret or external secret manager in production.
-		username: g4_app
-		password: "CHANGE_ME_POSTGRES_PASSWORD"
-		database: g4_platform
-	primary:
-		persistence:
-			# Staging-sized volume.
-			size: 8Gi
+  # Bitnami PostgreSQL values
+  auth:
+    # TODO: Replace with a Secret or external secret manager in production.
+    username: g4_app
+    password: "CHANGE_ME_POSTGRES_PASSWORD"
+    database: g4_platform
+  primary:
+    persistence:
+      # Staging-sized volume.
+      size: 8Gi
 
 kafka:
-	# Bitnami Kafka values
-	auth:
-		# TODO: Replace with a Secret or external secret manager in production.
-		enabled: true
-		clientProtocol: sasl
-		saslMechanisms: plain
-		sasl:
-			client:
-				users:
-					- kafka
-				passwords:
-					- "CHANGE_ME_KAFKA_PASSWORD"
-	persistence:
-		# Staging-sized volume.
-		size: 8Gi
+  # Bitnami Kafka values
+  auth:
+    # TODO: Replace with a Secret or external secret manager in production.
+    enabled: true
+    clientProtocol: sasl
+    saslMechanisms: plain
+    sasl:
+      client:
+        users:
+          - kafka
+        passwords:
+          - "CHANGE_ME_KAFKA_PASSWORD"
+  persistence:
+    # Staging-sized volume.
+    size: 8Gi
 
 kong:
-	# Kong ingress controller/gateway values
-	ingressController:
-		enabled: true
-	proxy:
-		type: LoadBalancer
+  # Kong ingress controller/gateway values
+  ingressController:
+    enabled: true
+  proxy:
+    type: LoadBalancer
 
 keycloak:
-	# Bitnami Keycloak values
-	ingress:
-		# Kong will route traffic; keep Keycloak ingress disabled.
-		enabled: false
-	auth:
-		# TODO: Replace with a Secret or external secret manager in production.
-		adminUser: admin
-		adminPassword: "CHANGE_ME_KEYCLOAK_ADMIN_PASSWORD"
+  # Bitnami Keycloak values
+  ingress:
+    # Kong will route traffic; keep Keycloak ingress disabled.
+    enabled: false
+  auth:
+    # TODO: Replace with a Secret or external secret manager in production.
+    adminUser: admin
+    adminPassword: "CHANGE_ME_KEYCLOAK_ADMIN_PASSWORD"
 
 influxdb:
-	# Bitnami InfluxDB values
-	auth:
-		# TODO: Replace with a Secret or external secret manager in production.
-		enabled: true
-		adminUser: admin
-		adminPassword: "CHANGE_ME_INFLUXDB_ADMIN_PASSWORD"
-		adminToken: "CHANGE_ME_INFLUXDB_ADMIN_TOKEN"
-	persistence:
-		# Staging-sized volume.
-		size: 8Gi
+  # Bitnami InfluxDB values
+  auth:
+    # TODO: Replace with a Secret or external secret manager in production.
+    enabled: true
+    adminUser: admin
+    adminPassword: "CHANGE_ME_INFLUXDB_ADMIN_PASSWORD"
+    adminToken: "CHANGE_ME_INFLUXDB_ADMIN_TOKEN"
+  persistence:
+    # Staging-sized volume.
+    size: 8Gi
 
 prometheus:
-	# Bitnami Prometheus values
-	ingress:
-		# Kong will route traffic; keep Prometheus ingress disabled.
-		enabled: false
+  # Bitnami Prometheus values
+  ingress:
+    # Kong will route traffic; keep Prometheus ingress disabled.
+    enabled: false
 
 grafana:
-	# Bitnami Grafana values
-	ingress:
-		# Kong will route traffic; keep Grafana ingress disabled.
-		enabled: false
-	admin:
-		# TODO: Replace with a Secret or external secret manager in production.
-		user: admin
-		password: "CHANGE_ME_GRAFANA_ADMIN_PASSWORD"
+  # Bitnami Grafana values
+  ingress:
+    # Kong will route traffic; keep Grafana ingress disabled.
+    enabled: false
+  admin:
+    # TODO: Replace with a Secret or external secret manager in production.
+    user: admin
+    password: "CHANGE_ME_GRAFANA_ADMIN_PASSWORD"
 
 mosquitto:
-	# Local mosquitto chart values
-	persistence:
-		enabled: true
-		# Staging-sized volume.
-		size: 8Gi
+  # Local mosquitto chart values
+  persistence:
+    enabled: true
+    # Staging-sized volume.
+    size: 8Gi
 
 flyway-job:
-	# Local flyway job values
-	image:
-		repository: flyway/flyway
-		tag: "10.15"
-	# TODO: Replace with a Secret or external secret manager in production.
-	env:
-		FLYWAY_URL: "jdbc:postgresql://postgresql:5432/g4_platform"
-		FLYWAY_USER: g4_app
-		FLYWAY_PASSWORD: "CHANGE_ME_FLYWAY_PASSWORD"
+  # Local flyway job values
+  image:
+    repository: flyway/flyway
+    tag: "10.15"
+  # TODO: Replace with a Secret or external secret manager in production.
+  env:
+    FLYWAY_URL: "jdbc:postgresql://postgresql:5432/g4_platform"
+    FLYWAY_USER: g4_app
+    FLYWAY_PASSWORD: "CHANGE_ME_FLYWAY_PASSWORD"
