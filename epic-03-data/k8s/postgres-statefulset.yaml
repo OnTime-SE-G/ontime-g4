@@ -1,30 +1,22 @@
-# TODO: Implement according to G4 guide and issue assignment.
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: transit-data
----
-
-# 3. UPDATED ConfigMap for the Init Script
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: postgres-init-script
   namespace: transit-data
 data:
-  init.sql: |
+  00-init-databases.sql: |
+    CREATE DATABASE fleet_db;
+    CREATE DATABASE ontime_test_db;
     CREATE DATABASE keycloak_db;
 
-    -- Connect to the transit_db created by the environment variables
-    \c transit_db
+    \connect ontime_db
+    CREATE EXTENSION IF NOT EXISTS postgis;
+    CREATE EXTENSION IF NOT EXISTS postgis_topology;
 
-    -- Install the spatial extensions required for geo-fencing (G4-20)
+    \connect ontime_test_db
     CREATE EXTENSION IF NOT EXISTS postgis;
     CREATE EXTENSION IF NOT EXISTS postgis_topology;
 ---
-
-# 4. UPDATED StatefulSet
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -43,30 +35,51 @@ spec:
     spec:
       containers:
         - name: postgresql
-          # We swapped to the PostGIS image!
           image: postgis/postgis:16-3.4-alpine
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 5432
+            - name: postgres
+              containerPort: 5432
           env:
-            # The Alpine image automatically creates transit_db in UTF-8
             - name: POSTGRES_DB
-              value: "transit_db"
+              value: ontime_db
             - name: POSTGRES_USER
-              value: "transit_admin"
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: username
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: postgres-credentials
                   key: password
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
           volumeMounts:
             - name: postgres-storage
               mountPath: /var/lib/postgresql/data
             - name: init-script-volume
-              mountPath: /docker-entrypoint-initdb.d/
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
       volumes:
-        - name: init-script-volume
-          configMap:
-            name: postgres-init-script
         - name: init-script-volume
           configMap:
             name: postgres-init-script
@@ -74,7 +87,8 @@ spec:
     - metadata:
         name: postgres-storage
       spec:
-        accessModes: ["ReadWriteOnce"]
+        accessModes:
+          - ReadWriteOnce
         storageClassName: do-block-storage
         resources:
           requests:
