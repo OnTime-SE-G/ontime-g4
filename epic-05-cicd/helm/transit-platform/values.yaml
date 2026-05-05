@@ -92,3 +92,143 @@ flyway-job:
     FLYWAY_URL: "jdbc:postgresql://postgresql:5432/g4_platform"
     FLYWAY_USER: g4_app
     FLYWAY_PASSWORD: "CHANGE_ME_FLYWAY_PASSWORD"
+
+g2-services:
+  services:
+    api-gateway:
+      image:
+        repository: ghcr.io/ontime-se-g/ontime-g2/api-gateway
+        tag: sha-ed25d77
+        pullPolicy: IfNotPresent
+      containerPort: 8000
+      service:
+        type: ClusterIP
+        port: 8000
+      env:
+        REDIS_URL: "redis://redis:6379/0"
+        ROUTE_SERVICE_URL: "http://route-service:8002"
+        FLEET_SERVICE_URL: "http://fleet-management-service:8003"
+      secrets:
+        DATABASE_URL: "postgresql://g4_app:CHANGE_ME_POSTGRES_PASSWORD@postgresql:5432/g4_platform"
+
+    route-service:
+      image:
+        repository: ghcr.io/ontime-se-g/ontime-g2/route-service
+        tag: sha-ed25d77
+        pullPolicy: IfNotPresent
+      containerPort: 8002
+      service:
+        type: ClusterIP
+        port: 8002
+      env: {}
+      secrets:
+        DATABASE_URL: "postgresql://g4_app:CHANGE_ME_POSTGRES_PASSWORD@postgresql:5432/g4_platform"
+
+    fleet-management-service:
+      image:
+        repository: ghcr.io/ontime-se-g/ontime-g2/fleet-management-service
+        tag: sha-ed25d77
+        pullPolicy: IfNotPresent
+      containerPort: 8003
+      service:
+        type: ClusterIP
+        port: 8003
+      env:
+        ROUTE_SERVICE_URL: "http://route-service:8002"
+        KAFKA_BROKER_URL: "kafka:9092"
+        KAFKA_TRIP_LIFECYCLE_TOPIC: "trip.lifecycle"
+      secrets:
+        DATABASE_URL: "postgresql://g4_app:CHANGE_ME_POSTGRES_PASSWORD@postgresql:5432/g4_platform"
+
+    ingestion:
+      image:
+        repository: ghcr.io/ontime-se-g/ontime-g2/ingestion
+        tag: sha-ed25d77
+        pullPolicy: IfNotPresent
+      containerPort: 8001
+      service:
+        type: ClusterIP
+        port: 8001
+      env:
+        MQTT_BROKER_HOST: "mosquitto"
+        MQTT_BROKER_PORT: "1883"
+        MQTT_TOPIC_PATTERN: "transport/bus/+/location"
+        MQTT_HEARTBEAT_TOPIC_PATTERN: "transport/bus/+/heartbeat"
+        MQTT_TLS_ENABLED: "false"
+        MQTT_CLIENT_ID: "ontime-ingestion-service"
+        KAFKA_BROKER_URL: "kafka:9092"
+        INGESTION_KAFKA_RAW_TOPIC: "transport-telemetry-raw"
+        INGESTION_KAFKA_DLQ_TOPIC: "transport-telemetry-dlq"
+        INGESTION_KAFKA_TRIP_LIFECYCLE_TOPIC: "trip.lifecycle"
+        INGESTION_TRIP_CACHE_CONSUMER_GROUP: "ingestion-trip-cache"
+        INGESTION_REQUIRE_ACTIVE_TRIP: "true"
+        INGESTION_TRIP_CACHE_REBUILD_TIMEOUT_SECONDS: "60.0"
+        INGESTION_STARTUP_BUFFER_MAX_MESSAGES: "1000"
+        INGESTION_SERVICE_PORT: "8001"
+        INGESTION_MIN_MESSAGE_INTERVAL_SECONDS: "3.0"
+        INGESTION_MIN_EVENT_INTERVAL_SECONDS: "1.0"
+        INGESTION_MAX_FUTURE_SKEW_SECONDS: "30.0"
+        INGESTION_MAX_STALE_AGE_SECONDS: "86400.0"
+        INGESTION_DUPLICATE_CACHE_SIZE: "100"
+      secrets: {}
+
+    websocket-service:
+      image:
+        repository: ghcr.io/ontime-se-g/ontime-g2/websocket-service
+        tag: sha-ed25d77
+        pullPolicy: IfNotPresent
+      containerPort: 8004
+      service:
+        type: ClusterIP
+        port: 8004
+      env:
+        REDIS_URL: "redis://redis:6379"
+        FLEET_CHANNEL: "fleet:live"
+        ETA_CHANNEL: "eta:live"
+      secrets: {}
+
+    anomaly-service:
+      image:
+        repository: ghcr.io/ontime-se-g/ontime-g2/anomaly-service
+        tag: sha-ed25d77
+        pullPolicy: IfNotPresent
+      containerPort: 8006
+      service:
+        type: ClusterIP
+        port: 8006
+      env:
+        KAFKA_BROKER_URL: "kafka:9092"
+        KAFKA_CLEANED_TOPIC: "transport-telemetry-cleaned"
+        KAFKA_DLQ_TOPIC: "transport-telemetry-dlq"
+        KAFKA_ANOMALY_TOPIC: "transport-anomaly-alerts"
+        KAFKA_DLQ_GROUP_ID: "anomaly-service-dlq-group"
+        ROUTE_SERVICE_URL: "http://route-service:8002"
+        COMMUNICATION_LOSS_CHECK_INTERVAL_SECONDS: "60"
+        COMMUNICATION_LOSS_THRESHOLD_SECONDS: "180"
+        INACTIVE_TRIP_DLQ_THRESHOLD_COUNT: "3"
+        INACTIVE_TRIP_DLQ_WINDOW_SECONDS: "60"
+        INACTIVE_TRIP_DLQ_COOLDOWN_SECONDS: "300"
+      secrets: {}
+
+    stream-processing:
+      image:
+        repository: ghcr.io/ontime-se-g/ontime-g2/stream-processing
+        tag: sha-ed25d77
+        pullPolicy: IfNotPresent
+      containerPort: 8081
+      service:
+        type: ClusterIP
+        port: 8081
+      env:
+        KAFKA_BROKER_URL: "kafka:9092"
+        KAFKA_RAW_TOPIC: "transport-telemetry-raw"
+        KAFKA_CLEANED_TOPIC: "transport-telemetry-cleaned"
+        KAFKA_LIFECYCLE_TOPIC: "trip.lifecycle"
+        REDIS_HOST: "redis"
+        REDIS_PORT: "6379"
+        INFLUXDB_URL: "http://influxdb:8086"
+        INFLUXDB_ORG: "ontime"
+        INFLUXDB_BUCKET: "telemetry"
+        ROUTE_SERVICE_URL: "http://route-service:8002"
+      secrets:
+        INFLUXDB_TOKEN: "CHANGE_ME_INFLUXDB_ADMIN_TOKEN"
