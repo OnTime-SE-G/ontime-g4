@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: transit-intelligence
+  labels:
+    name: transit-intelligence
+    istio-injection: enabled
