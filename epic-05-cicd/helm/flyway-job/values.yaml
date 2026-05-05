@@ -1,0 +1,6 @@
+image:
+  repository: flyway/flyway
+  tag: "10.15"
+  pullPolicy: IfNotPresent
+
+env: {}

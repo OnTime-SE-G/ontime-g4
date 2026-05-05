@@ -165,7 +165,9 @@ jobs:
         if: ${{ hashFiles('shared/contracts/openapi/*.yml', 'shared/contracts/openapi/*.yaml') != '' }}
         run: |
           docker run --rm -v "$PWD:/work" stoplight/spectral:6 \
-            lint /work/shared/contracts/openapi/transit-api.yaml --ruleset /work/.spectral.yaml
+            lint "/work/shared/contracts/openapi/*.yml" \
+            "/work/shared/contracts/openapi/*.yaml" \
+            --ruleset /work/.spectral.yaml
 
   build_image:
     runs-on: ubuntu-latest
@@ -296,6 +298,7 @@ jobs:
           fi
           helm upgrade --install transit-platform ./epic-05-cicd/helm/transit-platform \
             -n transit-platform --create-namespace \
+            -f ./epic-05-cicd/helm/transit-platform/values-staging.yaml \
             --set image.tag=${{ github.sha }} \
             --wait --timeout 5m
 

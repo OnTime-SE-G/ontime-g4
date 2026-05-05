@@ -1,5 +1,8 @@
 extends: default
 
+ignore: |
+  epic-05-cicd/helm/**/templates/*.yaml
+
 rules:
   empty-lines:
     max: 3

@@ -1,1 +1,32 @@
-# TODO: Implement according to G4 guide and issue assignment.
+# Staging overrides to keep the 3-node DOKS cluster stable.
+# These limits prevent OOM crashes during staging tests.
+
+kong:
+  proxy:
+    type: LoadBalancer
+    annotations:
+      # Smallest DigitalOcean LB size for staging cost control.
+      service.beta.kubernetes.io/do-loadbalancer-size-unit: "1"
+      # Name the load balancer for quick identification.
+      service.beta.kubernetes.io/do-loadbalancer-name: "ontime-staging-api-gateway"
+
+postgresql:
+  primary:
+    # Staging resource limits to prevent OOM crashes.
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+
+kafka:
+  # Staging resource limits to prevent OOM crashes.
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
