@@ -1,1 +1,37 @@
-# TODO: Implement according to G4 guide and issue assignment.
+apiVersion: v2
+name: transit-platform
+description: Umbrella chart for the G4 transit platform.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: postgresql
+    version: "15.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+  - name: kafka
+    version: "30.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+  - name: kong
+    version: "2.x.x"
+    repository: "https://charts.konghq.com"
+  - name: keycloak
+    version: "21.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+  - name: influxdb
+    version: "6.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+  - name: prometheus
+    version: "1.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+  - name: grafana
+    version: "10.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+  - name: mosquitto
+    version: "0.1.0"
+    repository: "file://../mosquitto"
+  - name: flyway-job
+    version: "0.1.0"
+    repository: "file://../flyway-job"
+  - name: g2-services
+    version: "0.1.0"
+    repository: "file://../g2-services"

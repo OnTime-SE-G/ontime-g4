@@ -1,0 +1,24 @@
+# yamllint disable rule:braces
+# yamllint disable rule:syntax
+{{- range $name, $svc := .Values.services }}
+{{- $fullName := printf "%s-g2-%s" $.Release.Name $name | trunc 63 | trimSuffix "-" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ $fullName }}"
+  labels:
+    app.kubernetes.io/name: "{{ $fullName }}"
+    app.kubernetes.io/instance: "{{ $.Release.Name }}"
+    app.kubernetes.io/component: "{{ $name }}"
+spec:
+  type: "{{ default "ClusterIP" $svc.service.type }}"
+  ports:
+    - name: http
+      port: {{ default $svc.containerPort $svc.service.port }}
+      targetPort: {{ $svc.containerPort }}
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: "{{ $fullName }}"
+    app.kubernetes.io/instance: "{{ $.Release.Name }}"
+---
+{{- end }}

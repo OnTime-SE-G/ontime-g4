@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: transit-ui
+  labels:
+    name: transit-ui
+    istio-injection: enabled

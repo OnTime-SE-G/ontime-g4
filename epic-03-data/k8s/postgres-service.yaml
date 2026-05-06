@@ -11,16 +11,3 @@ spec:
   selector:
     app: postgresql
 
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: postgresql-service
-  namespace: transit-data
-spec:
-  type: ClusterIP
-  ports:
-    - port: 5432
-      targetPort: 5432
-  selector:
-    app: postgresql

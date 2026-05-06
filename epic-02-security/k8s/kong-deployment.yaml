@@ -1,8 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
-
 metadata:
   name: kong-gateway
+  namespace: transit-platform
   labels:
     app: kong-gateway
 

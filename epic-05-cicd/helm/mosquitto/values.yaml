@@ -1,1 +1,12 @@
-# TODO: Implement according to G4 guide and issue assignment.
+image:
+  repository: eclipse-mosquitto
+  tag: "2.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 1883
+
+persistence:
+  enabled: true
+  size: 8Gi

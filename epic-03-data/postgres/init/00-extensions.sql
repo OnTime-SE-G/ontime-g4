@@ -1,11 +1,11 @@
-﻿-- TODO: Implement according to G4 guide and issue assignment.
-
--- Create the additional Keycloak database
+﻿CREATE DATABASE fleet_db;
+CREATE DATABASE ontime_test_db;
 CREATE DATABASE keycloak_db;
 
--- Connect to the main transit database (created automatically by the container env vars)
-\c transit_db
+\connect ontime_db
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS postgis_topology;
 
--- Install the spatial extensions for geo-fencing and route mapping
+\connect ontime_test_db
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS postgis_topology;

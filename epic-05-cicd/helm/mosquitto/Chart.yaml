@@ -1,2 +1,7 @@
-﻿# TODO: Implement according to G4 guide and issue assignment.
+﻿apiVersion: v2
+name: mosquitto
+description: Mosquitto MQTT broker
+type: application
+version: 0.1.0
+appVersion: "2.0"
 
