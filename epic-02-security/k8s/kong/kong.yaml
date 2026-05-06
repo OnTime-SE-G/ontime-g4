@@ -11,17 +11,18 @@ consumers:
   - username: keycloak-issuer
     jwt_secrets:
       - algorithm: RS256
-        key: "http://localhost:8000/auth/realms/transit-system"  # iss value
+        key: "http://localhost:8080/auth/realms/transit-system"  # iss value
         rsa_public_key: |
           -----BEGIN PUBLIC KEY-----
-          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtYrCE4Zi4xPgZ03r5bDV
-          NFuMC9ViZenlsr2TU0r2WyEVxfkW8AwSySMAutvXmzAS2sSs3eaEfA84/otVhSvd
-          CQJFECYOv8Kv8E+3g4IhQXYojXv9kYA5IhcpHeVgkjGZXUnFEUw5Qkcu2zynTnt9
-          01yVs6FaVRM/XeEtPlwjW9v4ywRErmIU0T1gVoKm1lBERhxyfrCgjYjDbYmQIgf3
-          TOEHiAG+hR88W99SpKD1LTobL42vIoJljbl3hFh0/idhUEkUbRjYP8h2LsE2mpKI
-          ZyMp8BUOqNB94eNiV0m5/ujQAWuA0M7KZhvPhd1w1yS3WYZT67f1fzoASWppp3ao
-          zQIDAQAB
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAt+SPdvgkS02Di+Zvdahe
+          dBdr3oOPJ8h5e9suwqKgH+Ru0nlVCz2TaozVqgRT/4/24em+HuEyIuPTgZ4uas80
+          ta1Tiz+kAyVd+uN/n4W35A4kagY0Pe3GtV2KWsclHCZdVTzVd6k9XkT4WsqfetDB
+          UBPOdG1nIEELH5h/x69VAnlFahYXigXGTnM6ursBlQtZSI/kiIew4DhKkTQ0wVux
+          xZeqXX9sxaXvFnXYu7ldQBx6hC85mzxYL7UMbDLNviiNzUNuviivI4keMKl0tCUD
+          2Rkov47TqWw7PZlGukZrdHyaWflfQxegsL2NdQKvXIzxPbnq3ixgGmpgyLRQRzCZ
+          AwIDAQAB
           -----END PUBLIC KEY-----
+        secret: "dummy"
      
 # To test locally:
 #   kubectl port-forward -n transit-platform svc/kong-proxy 8088:80
@@ -41,7 +42,6 @@ services:
       - name: ontime-api-route
         paths:
           - /api/v1/ontime
-          - /api/v1/ontime/*
         methods:
           - GET
           - POST
@@ -77,7 +77,6 @@ services:
         preserve_host: true
         paths:
           - /auth
-          - /auth/*
         methods:
           - HEAD
           - GET
@@ -95,7 +94,6 @@ services:
       - name: tracking-buses-route
         paths:
           - /api/tracking/buses
-          - /api/tracking/buses/*
         methods: [GET]
         plugins:
           - name: jwt
@@ -117,7 +115,6 @@ services:
       - name: tracking-eta-route
         paths:
           - /api/tracking/halts
-          - /api/tracking/halts/*
         methods: [GET]
         plugins:
           - name: jwt
@@ -142,7 +139,6 @@ services:
       - name: driver-status-route
         paths:
           - /api/driver/status
-          - /api/driver/status/*
         methods: [GET, POST]
         plugins:
           - name: jwt
@@ -163,7 +159,6 @@ services:
       - name: driver-incident-route
         paths:
           - /api/driver/incident
-          - /api/driver/incident/*
         methods: [GET, POST]
         plugins:
           - name: jwt
@@ -184,7 +179,6 @@ services:
       - name: driver-occupancy-route
         paths:
           - /api/driver/occupancy
-          - /api/driver/occupancy/*
         methods: [GET, POST]
         plugins:
           - name: jwt
@@ -209,7 +203,6 @@ services:
       - name: scheduler-fleet-route
         paths:
           - /api/scheduler/fleet
-          - /api/scheduler/fleet/*
         methods: [GET, POST, PUT, DELETE]
         plugins:
           - name: jwt
@@ -230,7 +223,6 @@ services:
       - name: scheduler-dispatch-route
         paths:
           - /api/scheduler/dispatch
-          - /api/scheduler/dispatch/*
         methods: [GET, POST, PUT, DELETE]
         plugins:
           - name: jwt
@@ -255,7 +247,6 @@ services:
       - name: admin-config-route
         paths:
           - /api/admin/config
-          - /api/admin/config/*
         methods: [GET, POST, PUT, DELETE]
         plugins:
           - name: jwt
