@@ -109,8 +109,10 @@ spec:
               value: "false"               # allow requests without strict hostname match
             - name: KC_HOSTNAME_STRICT_HTTPS
               value: "false"               # allow non-HTTPS for hostname strictness
-            #- name: KC_HOSTNAME
-            #  value: http://localhost:8080             # at production, must use publicly reachable hostname ep: auth.ontime.lk
+            - name: KC_HOSTNAME_URL
+              value: "http://10.110.238.6/auth"        # external Keycloak URL
+            - name: KC_HOSTNAME_ADMIN_URL
+              value: "http://10.110.238.6/auth"        # external admin URL
             - name: KC_HTTP_ENABLED
               value: "true"                # enable HTTP
             - name: KC_HTTP_PORT
