@@ -1,0 +1,23 @@
+allInOne:
+  enabled: true
+  image:
+    tag: 1.50
+  persistence:
+    enabled: true
+    storageClassName: do-block-storage
+    size: 5Gi
+
+collector:
+  service:
+    otlp:
+      grpc:
+        enabled: true
+      http:
+        enabled: true
+
+query:
+  service:
+    type: ClusterIP
+
+storage:
+  type: memory # Increment 1 uses memory storage for Jaeger All-in-one

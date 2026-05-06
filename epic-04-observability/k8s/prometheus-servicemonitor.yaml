@@ -52,7 +52,7 @@ spec:
       app: kong-gateway
   namespaceSelector:
     matchNames:
-      - transit-security
+      - transit-platform
   endpoints:
     - port: admin-api
       path: /metrics
@@ -72,7 +72,7 @@ spec:
       app.kubernetes.io/name: keycloak
   namespaceSelector:
     matchNames:
-      - transit-security
+      - transit-platform
   endpoints:
     - port: metrics
       path: /metrics

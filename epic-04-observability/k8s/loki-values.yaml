@@ -1,0 +1,29 @@
+loki:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 10Gi
+  config:
+    table_manager:
+      retention_deletes_enabled: true
+      retention_period: 15d
+
+promtail:
+  enabled: true
+  config:
+    lokiAddress: http://loki:3100/loki/api/v1/push
+    snippets:
+      pipelineStages:
+        - json:
+            expressions:
+              level: level
+              service: service
+              trace_id: trace_id
+              message: message
+        - labels:
+            level:
+            service:
+            trace_id:
+
+grafana:
+  enabled: false
