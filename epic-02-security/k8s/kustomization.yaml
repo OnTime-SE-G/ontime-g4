@@ -1,11 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: transit-platform
-
 # automatically creates the ConfigMap by reading kong.yaml file
 configMapGenerator:
   - name: kong-declarative-config
+    namespace: transit-platform
     files:
       - kong.yml=./kong/kong.yaml
 
@@ -14,3 +13,10 @@ resources:
   - kong-deployment.yaml
   - kong-service.yaml
   - kong-hpa.yaml
+  - redis/redis-deployment.yaml 
+  - keycloak/keycloak-deployment.yaml
+  - keycloak/keycloak-secrets.yaml
+
+
+
+   

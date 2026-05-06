@@ -1,11 +1,10 @@
 ﻿apiVersion: v1
 kind: Service
-
 metadata:
   name: kong-proxy
+  namespace: transit-platform
   labels:
     app: kong-gateway
-
 spec:
   type: LoadBalancer  # Exposes 80 and 443 to the public internet
   selector:
@@ -23,6 +22,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kong-admin
+  namespace: transit-platform
   labels:
     app: kong-gateway
 spec:

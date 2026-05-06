@@ -1,13 +1,88 @@
+﻿# 1. Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: transit-data
+---
+# 2. Secret for the Password
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-credentials
+  namespace: transit-data
+type: Opaque
+data:
+  POSTGRES_PASSWORD: c3VwZXJzZWN1cmVwYXNzd29yZA==
+---
+# 3. UPDATED ConfigMap for the Init Script
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: postgres-init-script
   namespace: transit-data
 data:
-  00-init-databases.sql: |
-    CREATE DATABASE fleet_db;
-    CREATE DATABASE ontime_test_db;
+  init.sql: |
     CREATE DATABASE keycloak_db;
+    
+    -- Connect to the transit_db created by the environment variables
+    \c transit_db
+    
+    -- Install the spatial extensions required for geo-fencing (G4-20)
+    CREATE EXTENSION IF NOT EXISTS postgis;
+    CREATE EXTENSION IF NOT EXISTS postgis_topology;
+---
+# 4. UPDATED StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgresql
+  namespace: transit-data
+spec:
+  serviceName: "postgresql-service"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+  template:
+    metadata:
+      labels:
+        app: postgresql
+    spec:
+      containers:
+      - name: postgresql
+        # We swapped to the PostGIS image!
+        image: postgis/postgis:16-3.4-alpine 
+        ports:
+        - containerPort: 5432
+        env:
+        # The Alpine image automatically creates transit_db in UTF-8
+        - name: POSTGRES_DB
+          value: "transit_db"
+        - name: POSTGRES_USER
+          value: "transit_admin"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_PASSWORD
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        - name: init-script-volume
+          mountPath: /docker-entrypoint-initdb.d/
+      volumes:
+      - name: init-script-volume
+        configMap:
+          name: postgres-init-script
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: standard          # use do-block-storage if you want to use a block storage at production
+      resources:
+        requests:
+          storage: 10Gi
 
     \connect ontime_db
     CREATE EXTENSION IF NOT EXISTS postgis;

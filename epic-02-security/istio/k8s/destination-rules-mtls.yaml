@@ -1,0 +1,83 @@
+﻿apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: default-mtls-transit-platform
+  namespace: transit-platform
+  labels:
+    app.kubernetes.io/part-of: transit-platform
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  host: "*.transit-platform.svc.cluster.local"
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: default-mtls-transit-data
+  namespace: transit-data
+  labels:
+    app.kubernetes.io/part-of: transit-platform
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  host: "*.transit-data.svc.cluster.local"
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: default-mtls-transit-edge
+  namespace: transit-edge
+  labels:
+    app.kubernetes.io/part-of: transit-platform
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  host: "*.transit-edge.svc.cluster.local"
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: default-mtls-transit-streaming
+  namespace: transit-streaming
+  labels:
+    app.kubernetes.io/part-of: transit-platform
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  host: "*.transit-streaming.svc.cluster.local"
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: default-mtls-transit-intelligence
+  namespace: transit-intelligence
+  labels:
+    app.kubernetes.io/part-of: transit-platform
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  host: "*.transit-intelligence.svc.cluster.local"
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: default-mtls-transit-ui
+  namespace: transit-ui
+  labels:
+    app.kubernetes.io/part-of: transit-platform
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  host: "*.transit-ui.svc.cluster.local"
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
