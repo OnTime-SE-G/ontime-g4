@@ -1,0 +1,33 @@
+dependencies:
+- name: postgresql
+  repository: https://charts.bitnami.com/bitnami
+  version: 15.5.38
+- name: kafka
+  repository: https://charts.bitnami.com/bitnami
+  version: 30.1.8
+- name: kong
+  repository: https://charts.konghq.com
+  version: 2.52.0
+- name: keycloak
+  repository: https://charts.bitnami.com/bitnami
+  version: 21.8.0
+- name: influxdb
+  repository: https://charts.bitnami.com/bitnami
+  version: 6.6.16
+- name: prometheus
+  repository: https://charts.bitnami.com/bitnami
+  version: 1.4.10
+- name: grafana
+  repository: https://charts.bitnami.com/bitnami
+  version: 10.1.1
+- name: mosquitto
+  repository: file://../mosquitto
+  version: 0.1.0
+- name: flyway-job
+  repository: file://../flyway-job
+  version: 0.1.0
+- name: g2-services
+  repository: file://../g2-services
+  version: 0.1.0
+digest: sha256:b94cd267b9edb72783c8cdda2f4c1ab385b83b890d9fc5d71a741767986fa031
+generated: "2026-05-05T17:28:42.41482+05:30"

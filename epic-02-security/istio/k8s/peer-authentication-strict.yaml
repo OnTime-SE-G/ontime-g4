@@ -1,0 +1,11 @@
+﻿apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: mesh-wide-strict-mtls
+  namespace: istio-system          # istio-system scope = applies to entire mesh
+  labels:
+    app.kubernetes.io/part-of: transit-platform
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  mtls:
+    mode: STRICT

@@ -77,8 +77,7 @@ spec:
           args: ["start"]
           
           # Environment variables for configuring Keycloak (DB connection, admin credentials, URLs, etc.)
-          env:
- 
+          env: 
             - name: KC_DB
               value: postgres
             # Database keycloak_db — see postgres-init-script in transit-data

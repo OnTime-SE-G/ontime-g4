@@ -1,8 +1,8 @@
-﻿apiVersion: apps/v1
+apiVersion: apps/v1
 kind: Deployment
-
 metadata:
   name: kong-gateway
+  namespace: transit-platform
   labels:
     app: kong-gateway
 
@@ -34,6 +34,8 @@ spec:
               value: "/dev/stderr"
             - name: KONG_ADMIN_LISTEN         # Required so the Admin API listens on all internal connections
               value: "0.0.0.0:8001"
+            - name: KONG_LOG_LEVEL
+              value: "debug"
           ports:
             - name: proxy
               containerPort: 8000
@@ -53,7 +55,7 @@ spec:
               port: 8001
             initialDelaySeconds: 5
             periodSeconds: 10
-            
+
           # IMPORTANT: The HPA auto-scaler will not work unless we define resource requests!
           resources:
             requests:
@@ -62,7 +64,7 @@ spec:
             limits:
               cpu: "500m"
               memory: "512Mi"
-              
+
           volumeMounts:
             - name: kong-config-volume
               mountPath: /kong_config

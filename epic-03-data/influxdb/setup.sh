@@ -1,5 +1,8 @@
-﻿#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+set -e
 
-# TODO: Implement according to G4 guide and issue assignment.
-
+influx bucket create \
+  --name gps-aggregates \
+  --org "${DOCKER_INFLUXDB_INIT_ORG:-ontime}" \
+  --retention 2160h \
+  --token "$DOCKER_INFLUXDB_INIT_ADMIN_TOKEN" || true

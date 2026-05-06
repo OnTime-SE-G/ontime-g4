@@ -1,13 +1,40 @@
 _format_version: "3.0"
 _transform: true
 
-# kong-proxy is LoadBalancer type but Minikube doesn't have a LoadBalancer controller, 
-# so the external IP never gets assigned. browser can't reach it because there's no actual external IP.
+# ─────────────────────────────────────────────────────────────────────────────
+# JWT Consumer — represents Keycloak as the token issuer.
+# Kong matches the 'iss' claim in incoming JWTs to this credential.
+# Also get public key manually once when setup cluster, using: http://<keycloak-host>/auth/realms/<realm-name>
+# key must exactly match the 'iss' claim in Keycloak JWTs. use: jwt.io 
+# ─────────────────────────────────────────────────────────────────────────────
+consumers:
+  - username: keycloak-issuer
+    jwt_secrets:
+      - algorithm: RS256
+        key: "http://localhost:8000/auth/realms/transit-system"  # iss value
+        rsa_public_key: |
+          -----BEGIN PUBLIC KEY-----
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtYrCE4Zi4xPgZ03r5bDV
+          NFuMC9ViZenlsr2TU0r2WyEVxfkW8AwSySMAutvXmzAS2sSs3eaEfA84/otVhSvd
+          CQJFECYOv8Kv8E+3g4IhQXYojXv9kYA5IhcpHeVgkjGZXUnFEUw5Qkcu2zynTnt9
+          01yVs6FaVRM/XeEtPlwjW9v4ywRErmIU0T1gVoKm1lBERhxyfrCgjYjDbYmQIgf3
+          TOEHiAG+hR88W99SpKD1LTobL42vIoJljbl3hFh0/idhUEkUbRjYP8h2LsE2mpKI
+          ZyMp8BUOqNB94eNiV0m5/ujQAWuA0M7KZhvPhd1w1yS3WYZT67f1fzoASWppp3ao
+          zQIDAQAB
+          -----END PUBLIC KEY-----
+     
 # To test locally:
 #   kubectl port-forward -n transit-platform svc/kong-proxy 8088:80
 #   then open http://127.0.0.1:8088/auth/admin/
 
+# ─────────────────────────────────────────────────────────────────────────────
+# IMPORTANT: Every new microservice route MUST include the jwt + pre-function
+# plugins block. See ontime-api-route as the reference implementation.
+# Routes without these plugins will not be protected by JWT validation.
+# ─────────────────────────────────────────────────────────────────────────────
+
 services:
+  # ── Protected microservice — JWT required ──────────────────────────────────
   - name: ontime-api
     url: http://ontime-api:8000
     routes:
@@ -20,7 +47,18 @@ services:
           - POST
           - PUT
           - DELETE
+        plugins:
+          - name: jwt
+            config:
+              header_names:
+                - Authorization
+              claims_to_verify:
+                - exp
+              key_claim_name: iss
+         
 
+
+  # ── Health — public, no JWT ────────────────────────────────────────────────
   - name: kong-status
     url: http://localhost:8001
     routes:
@@ -31,8 +69,9 @@ services:
           - HEAD
           - GET
 
+  # ── Keycloak auth — public, no JWT ────────────────────────────────────────
   - name: keycloak-auth
-    url: http://keycloak-service:8080
+    url: http://keycloak-service.transit-platform.svc.cluster.local:8080
     routes:
       - name: keycloak-auth-route
         preserve_host: true
@@ -48,3 +87,226 @@ services:
           - PATCH
           - OPTIONS
         strip_path: false
+
+# ── Tracking endpoints — COMMUTER (60 req/min) ────────────────────────────
+  - name: tracking-service
+    url: http://tracking-service.transit-platform.svc.cluster.local:8000
+    routes:
+      - name: tracking-buses-route
+        paths:
+          - /api/tracking/buses
+          - /api/tracking/buses/*
+        methods: [GET]
+        plugins:
+          - name: jwt
+            config:
+              header_names: [Authorization]
+              claims_to_verify: 
+                - exp
+              key_claim_name: iss
+          - name: rate-limiting
+            config:
+              minute: 60
+              policy: redis
+              redis_host: redis.transit-platform.svc.cluster.local
+              redis_port: 6379
+              limit_by: consumer
+              fault_tolerant: true
+              hide_client_headers: false
+
+      - name: tracking-eta-route
+        paths:
+          - /api/tracking/halts
+          - /api/tracking/halts/*
+        methods: [GET]
+        plugins:
+          - name: jwt
+            config:
+              header_names: [Authorization]
+              claims_to_verify: [exp]
+              key_claim_name: iss
+          - name: rate-limiting
+            config:
+              minute: 60
+              policy: redis
+              redis_host: redis.transit-platform.svc.cluster.local
+              redis_port: 6379
+              limit_by: consumer
+              fault_tolerant: true
+              hide_client_headers: false
+
+  # ── Driver endpoints — DRIVER (20 req/min) ────────────────────────────────
+  - name: driver-service
+    url: http://driver-service.transit-platform.svc.cluster.local:8000
+    routes:
+      - name: driver-status-route
+        paths:
+          - /api/driver/status
+          - /api/driver/status/*
+        methods: [GET, POST]
+        plugins:
+          - name: jwt
+            config:
+              header_names: [Authorization]
+              claims_to_verify: [exp]
+              key_claim_name: iss
+          - name: rate-limiting
+            config:
+              minute: 20
+              policy: redis
+              redis_host: redis.transit-platform.svc.cluster.local
+              redis_port: 6379
+              limit_by: consumer
+              fault_tolerant: true
+              hide_client_headers: false
+
+      - name: driver-incident-route
+        paths:
+          - /api/driver/incident
+          - /api/driver/incident/*
+        methods: [GET, POST]
+        plugins:
+          - name: jwt
+            config:
+              header_names: [Authorization]
+              claims_to_verify: [exp]
+              key_claim_name: iss
+          - name: rate-limiting
+            config:
+              minute: 10
+              policy: redis
+              redis_host: redis.transit-platform.svc.cluster.local
+              redis_port: 6379
+              limit_by: consumer
+              fault_tolerant: true
+              hide_client_headers: false
+
+      - name: driver-occupancy-route
+        paths:
+          - /api/driver/occupancy
+          - /api/driver/occupancy/*
+        methods: [GET, POST]
+        plugins:
+          - name: jwt
+            config:
+              header_names: [Authorization]
+              claims_to_verify: [exp]
+              key_claim_name: iss
+          - name: rate-limiting
+            config:
+              minute: 20
+              policy: redis
+              redis_host: redis.transit-platform.svc.cluster.local
+              redis_port: 6379
+              limit_by: consumer
+              fault_tolerant: true
+              hide_client_headers: false
+
+  # ── Scheduler endpoints — SCHEDULER ───────────────────────────────────────
+  - name: scheduler-service
+    url: http://scheduler-service.transit-platform.svc.cluster.local:8000
+    routes:
+      - name: scheduler-fleet-route
+        paths:
+          - /api/scheduler/fleet
+          - /api/scheduler/fleet/*
+        methods: [GET, POST, PUT, DELETE]
+        plugins:
+          - name: jwt
+            config:
+              header_names: [Authorization]
+              claims_to_verify: [exp]
+              key_claim_name: iss
+          - name: rate-limiting
+            config:
+              minute: 120
+              policy: redis
+              redis_host: redis.transit-platform.svc.cluster.local
+              redis_port: 6379
+              limit_by: consumer
+              fault_tolerant: true
+              hide_client_headers: false
+
+      - name: scheduler-dispatch-route
+        paths:
+          - /api/scheduler/dispatch
+          - /api/scheduler/dispatch/*
+        methods: [GET, POST, PUT, DELETE]
+        plugins:
+          - name: jwt
+            config:
+              header_names: [Authorization]
+              claims_to_verify: [exp]
+              key_claim_name: iss
+          - name: rate-limiting
+            config:
+              minute: 10
+              policy: redis
+              redis_host: redis.transit-platform.svc.cluster.local
+              redis_port: 6379
+              limit_by: consumer
+              fault_tolerant: true
+              hide_client_headers: false
+
+  # ── Admin endpoints — tightly restricted ──────────────────────────────────
+  - name: admin-service
+    url: http://admin-service.transit-platform.svc.cluster.local:8000
+    routes:
+      - name: admin-config-route
+        paths:
+          - /api/admin/config
+          - /api/admin/config/*
+        methods: [GET, POST, PUT, DELETE]
+        plugins:
+          - name: jwt
+            config:
+              header_names: [Authorization]
+              claims_to_verify: [exp]
+              key_claim_name: iss
+          - name: rate-limiting
+            config:
+              minute: 5
+              policy: redis
+              redis_host: redis.transit-platform.svc.cluster.local
+              redis_port: 6379
+              limit_by: consumer
+              fault_tolerant: true
+              hide_client_headers: false
+
+  - name: httpbin
+    url: http://httpbin.transit-platform.svc.cluster.local:80
+    routes:
+      - name: httpbin-route
+        paths:
+          - /test/headers
+        strip_path: false
+        methods:
+          - GET
+
+        plugins:
+
+          - name: jwt
+            config:
+              claims_to_verify:
+                - exp
+              key_claim_name: iss
+              secret_is_base64: false
+
+          - name: rate-limiting
+            config:
+              minute: 5
+              policy: redis
+              redis_host: redis.transit-platform.svc.cluster.local
+              redis_port: 6379
+              limit_by: consumer
+              fault_tolerant: true
+              hide_client_headers: false
+
+
+          # 2. Rewrite path → /headers
+          - name: request-transformer
+            config:
+              replace:
+                uri: "/headers"
+
+         

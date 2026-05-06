@@ -1,2 +1,47 @@
-﻿# TODO: Implement according to G4 guide and issue assignment.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
 
+rule_files:
+  - "alert-rules.yml"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'fake-metrics'
+    static_configs:
+      - targets: ['fake-metrics:9091']
+
+  - job_name: 'mqtt-broker'
+    static_configs:
+      # Placeholder for mqtt-exporter sidecar
+      - targets: ['mosquitto:9000']
+
+  - job_name: 'kafka'
+    static_configs:
+      # Placeholder for Kafka JMX exporter
+      - targets: ['kafka:7071']
+
+  - job_name: 'kong'
+    static_configs:
+      # Kong built-in /metrics endpoint on admin port 8001
+      - targets: ['kong:8001']
+
+  - job_name: 'keycloak'
+    metrics_path: '/metrics'
+    static_configs:
+      # Placeholder for Keycloak metrics
+      - targets: ['keycloak:8080']
+
+  - job_name: 'postgresql'
+    static_configs:
+      # Placeholder for postgres_exporter
+      - targets: ['postgres:9187']
+
+  - job_name: 'influxdb'
+    metrics_path: '/metrics'
+    static_configs:
+      # InfluxDB built-in /metrics
+      - targets: ['influxdb:8086']

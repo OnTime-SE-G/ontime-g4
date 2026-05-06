@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-topic-creator
+  namespace: transit-streaming
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: topic-creator
+          image: confluentinc/cp-kafka:7.8.3
+          command:
+            - /bin/bash
+            - -c
+            - |
+              echo "Waiting for Kafka broker to be ready..."
+              while ! nc -z kafka 9092; do
+                sleep 2;
+              done;
+
+              echo "Kafka is ready. Creating G2's new topics..."
+
+              # 1. Raw Ingestion — transport-telemetry-raw
+              kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists \
+                --topic transport-telemetry-raw --partitions 12 --replication-factor 3 \
+                --config retention.ms=7200000 --config min.insync.replicas=2
+
+              # 2. Cleaned/Enriched Data — transport-telemetry-cleaned
+              kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists \
+                --topic transport-telemetry-cleaned --partitions 6 --replication-factor 3 \
+                --config retention.ms=1800000 --config min.insync.replicas=2
+
+              # 3. Anomaly Alerts — transport-anomaly-alerts
+              kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists \
+                --topic transport-anomaly-alerts --partitions 3 --replication-factor 3 \
+                --config retention.ms=86400000 --config min.insync.replicas=2
+
+              # 4. Dead Letter Queue — transport-telemetry-dlq
+              kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists \
+                --topic transport-telemetry-dlq --partitions 3 --replication-factor 3 \
+                --config retention.ms=86400000 --config min.insync.replicas=2
+
+              # 5. Trip Lifecycle — trip.lifecycle
+              kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists \
+                --topic trip.lifecycle --partitions 3 --replication-factor 3 \
+                --config retention.ms=7200000 --config min.insync.replicas=2
+
+              echo "✅ All G2 topics created successfully!"

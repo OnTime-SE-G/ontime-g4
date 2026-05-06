@@ -3,6 +3,7 @@ kind: HorizontalPodAutoscaler
 
 metadata:
   name: kong-gateway
+  namespace: transit-platform
   
 spec:
   scaleTargetRef:
@@ -12,9 +13,9 @@ spec:
   minReplicas: 2
   maxReplicas: 4
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 60
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60

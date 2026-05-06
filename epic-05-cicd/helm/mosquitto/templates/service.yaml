@@ -1,2 +1,21 @@
-﻿# TODO: Implement according to G4 guide and issue assignment.
+﻿#+#+#+#+#+#+#+#+assistant to=functions.apply_patch code
+# yamllint disable rule:braces
+# yamllint disable rule:syntax
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Release.Name }}-mosquitto"
+  labels:
+    app.kubernetes.io/name: mosquitto
+    app.kubernetes.io/instance: "{{ .Release.Name }}"
+spec:
+  type: "{{ .Values.service.type }}"
+  ports:
+    - name: mqtt
+      port: {{ .Values.service.port }}
+      targetPort: 1883
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: mosquitto
+    app.kubernetes.io/instance: "{{ .Release.Name }}"
 
