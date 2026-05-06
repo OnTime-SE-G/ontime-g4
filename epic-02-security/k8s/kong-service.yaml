@@ -6,7 +6,7 @@ metadata:
   labels:
     app: kong-gateway
 spec:
-  type: LoadBalancer # Exposes 80 and 443 to the public internet
+  type: LoadBalancer  # Exposes 80 and 443 to the public internet
   selector:
     app: kong-gateway
   ports:
@@ -26,7 +26,7 @@ metadata:
   labels:
     app: kong-gateway
 spec:
-  type: ClusterIP # Explicitly locks this down to internal traffic ONLY
+  type: ClusterIP  # Explicitly locks this down to internal traffic ONLY
   selector:
     app: kong-gateway
   ports:

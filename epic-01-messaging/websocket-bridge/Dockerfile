@@ -1,4 +1,8 @@
-﻿# TODO
+﻿FROM node:20-alpine
 
-Implement according to G4 guide and issue assignment.
+WORKDIR /app
+
+COPY . .
+
+CMD ["node", "-e", "console.log('websocket-bridge placeholder')"]
 

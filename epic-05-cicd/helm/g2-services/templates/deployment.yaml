@@ -1,0 +1,49 @@
+# yamllint disable rule:braces
+# yamllint disable rule:syntax
+{{- range $name, $svc := .Values.services }}
+{{- $fullName := printf "%s-g2-%s" $.Release.Name $name | trunc 63 | trimSuffix "-" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ $fullName }}"
+  labels:
+    app.kubernetes.io/name: "{{ $fullName }}"
+    app.kubernetes.io/instance: "{{ $.Release.Name }}"
+    app.kubernetes.io/component: "{{ $name }}"
+spec:
+  replicas: {{ default 1 $svc.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: "{{ $fullName }}"
+      app.kubernetes.io/instance: "{{ $.Release.Name }}"
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: "{{ $fullName }}"
+        app.kubernetes.io/instance: "{{ $.Release.Name }}"
+        app.kubernetes.io/component: "{{ $name }}"
+    spec:
+      containers:
+        - name: "{{ $name }}"
+          image: "{{ $svc.image.repository }}:{{ $svc.image.tag }}"
+          imagePullPolicy: "{{ $svc.image.pullPolicy }}"
+          ports:
+            - name: http
+              containerPort: {{ $svc.containerPort }}
+              protocol: TCP
+          {{- if or $svc.env $svc.secrets }}
+          env:
+            {{- range $key, $value := $svc.env }}
+            - name: "{{ $key }}"
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- range $key, $_ := $svc.secrets }}
+            - name: "{{ $key }}"
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ $fullName }}"
+                  key: "{{ $key }}"
+            {{- end }}
+          {{- end }}
+---
+{{- end }}

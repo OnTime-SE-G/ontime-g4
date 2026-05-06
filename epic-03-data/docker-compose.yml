@@ -1,2 +1,98 @@
-﻿# TODO: Implement according to G4 guide and issue assignment.
+﻿services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-ontime_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ontime_db}
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
+  redis:
+    image: redis:7-alpine
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  influxdb:
+    image: influxdb:2.7
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_INIT_USERNAME:-admin}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_INIT_PASSWORD:-adminpassword}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_INIT_ORG:-ontime}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_INIT_BUCKET:-telemetry}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_ADMIN_TOKEN:-super_secret_admin_token_123}
+    ports:
+      - "${INFLUXDB_PORT:-8086}:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
+      - ./influxdb/setup.sh:/docker-entrypoint-initdb.d/setup.sh:ro
+    healthcheck:
+      test:
+        - CMD
+        - influx
+        - ping
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  flyway-ontime:
+    image: flyway/flyway:10-alpine
+    command:
+      - -connectRetries=60
+      - -url=jdbc:postgresql://postgres:5432/ontime_db
+      - -user=${POSTGRES_USER:-postgres}
+      - -password=${POSTGRES_PASSWORD:-postgres}
+      - -locations=filesystem:/flyway/sql
+      - migrate
+    volumes:
+      - ./migrations/ontime:/flyway/sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  flyway-fleet:
+    image: flyway/flyway:10-alpine
+    command:
+      - -connectRetries=60
+      - -url=jdbc:postgresql://postgres:5432/fleet_db
+      - -user=${POSTGRES_USER:-postgres}
+      - -password=${POSTGRES_PASSWORD:-postgres}
+      - -locations=filesystem:/flyway/sql
+      - migrate
+    volumes:
+      - ./migrations/fleet:/flyway/sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  influxdb_data:
+  influxdb_config:
