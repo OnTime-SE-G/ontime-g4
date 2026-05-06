@@ -1,2 +1,97 @@
-﻿# TODO: Implement according to G4 guide and issue assignment.
+# Epic 01 — Local Docker Compose stack for messaging backbone testing
+# Usage: docker compose up -d
+# This brings up HiveMQ, Kafka (KRaft), and Redis locally for smoke tests.
 
+services:
+  # ── G4-01 / G4-02: HiveMQ MQTT Broker ──
+  hivemq:
+    image: hivemq/hivemq-ce:latest
+    container_name: hivemq
+    ports:
+      - "1883:1883"
+      - "8883:8883"
+    volumes:
+      - hivemq-data:/opt/hivemq/data
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 1883"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── G4-03: Kafka (KRaft single-node for local dev) ──
+  kafka:
+    image: confluentinc/cp-kafka:7.8.3
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 0
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: "1L6g7nGhU-eAKfL--X25wo"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    command: >
+      bash -c "
+        if [ ! -f /var/lib/kafka/data/meta.properties ]; then
+          kafka-storage format -t $$CLUSTER_ID -c /etc/kafka/kraft/server.properties;
+        fi;
+        /etc/confluent/docker/run
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── G4-04: Topic Creator (runs once) ──
+  topic-creator:
+    image: confluentinc/cp-kafka:7.8.3
+    container_name: topic-creator
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: /bin/bash
+    command: >
+      -c "
+        echo 'Creating G2 topics...';
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists
+          --topic transport-telemetry-raw --partitions 1 --replication-factor 1
+          --config retention.ms=7200000;
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists
+          --topic transport-telemetry-cleaned --partitions 1 --replication-factor 1
+          --config retention.ms=1800000;
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists
+          --topic transport-anomaly-alerts --partitions 1 --replication-factor 1
+          --config retention.ms=86400000;
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists
+          --topic transport-telemetry-dlq --partitions 1 --replication-factor 1
+          --config retention.ms=86400000;
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists
+          --topic trip.lifecycle --partitions 1 --replication-factor 1
+          --config retention.ms=7200000;
+        echo '✅ All topics created.';
+      "
+
+  # ── G4-07: Redis for WebSocket pub/sub ──
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  hivemq-data:
+  kafka-data:

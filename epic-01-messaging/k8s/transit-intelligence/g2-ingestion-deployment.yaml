@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: g2-ingestion-service
+  namespace: transit-intelligence
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: g2-ingestion
+  template:
+    metadata:
+      labels:
+        app: g2-ingestion
+    spec:
+      containers:
+        - name: ingestion
+          image: ghcr.io/your-org/ontime-g2-ingestion:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            # 1. HiveMQ Connection (G2 expects HOST and PORT separately)
+            - name: MQTT_BROKER_HOST
+              value: "hivemq-service.transit-edge.svc.cluster.local"
+            - name: MQTT_BROKER_PORT
+              value: "1883"
+            - name: MQTT_TLS_ENABLED
+              value: "false" # Keep false for internal cluster traffic
+
+            # 2. Kafka Connection (G2 expects KAFKA_BROKER_URL)
+            - name: KAFKA_BROKER_URL
+              value: "kafka.transit-streaming.svc.cluster.local:9092"
+
+            # 3. Kafka Topic Assignments (Required by G2's Python script)
+            - name: INGESTION_KAFKA_RAW_TOPIC
+              value: "transport-telemetry-raw"
+            - name: INGESTION_KAFKA_DLQ_TOPIC
+              value: "transport-telemetry-dlq"
+            - name: INGESTION_KAFKA_TRIP_LIFECYCLE_TOPIC
+              value: "trip.lifecycle"
