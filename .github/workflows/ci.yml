@@ -335,9 +335,8 @@ jobs:
           fi
           # Remove conflicting webhooks from previous failed attempts
           kubectl delete validatingwebhookconfiguration transit-platform-kong-transit-platform-validations --ignore-not-found
-          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
           helm upgrade --install transit-platform ./epic-05-cicd/helm/transit-platform \
             -n ${{ env.K8S_NAMESPACE }} --create-namespace \
             -f ./epic-05-cicd/helm/transit-platform/values-staging.yaml \
-            --wait --timeout 15m
+            --force --wait --timeout 15m
 

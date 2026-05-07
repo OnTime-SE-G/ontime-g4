@@ -14,10 +14,7 @@ postgresql:
     persistence:
       # Staging-sized volume.
       size: 8Gi
-  image:
-    registry: docker.io
-    repository: bitnami/postgresql
-    tag: 16.4.0
+
 
 kafka:
   # Bitnami Kafka values — KRaft mode (no ZooKeeper needed)
@@ -33,10 +30,7 @@ kafka:
   persistence:
     # Staging-sized volume.
     size: 8Gi
-  image:
-    registry: docker.io
-    repository: bitnami/kafka
-    tag: 3.7.1
+
 
 redis:
   # Bitnami Redis values
@@ -45,10 +39,7 @@ redis:
   master:
     persistence:
       size: 2Gi
-  image:
-    registry: docker.io
-    repository: bitnami/redis
-    tag: 7.2.5
+
   replica:
     replicaCount: 0
 
@@ -155,10 +146,7 @@ kong:
 
 keycloak:
   # Bitnami Keycloak values
-  image:
-    registry: docker.io
-    repository: bitnami/keycloak
-    tag: 25.0.2
+
   ingress:
     # Kong will route traffic; keep Keycloak ingress disabled.
     enabled: false
@@ -169,10 +157,7 @@ keycloak:
 
 influxdb:
   # Bitnami InfluxDB values
-  image:
-    registry: docker.io
-    repository: bitnami/influxdb
-    tag: 2.7.6
+
   auth:
     enabled: true
     adminUser: admin
@@ -186,20 +171,14 @@ prometheus:
   ingress:
     # Kong will route traffic; keep Prometheus ingress disabled.
     enabled: false
-  image:
-    registry: docker.io
-    repository: bitnami/prometheus
-    tag: 2.54.0
+
 
 grafana:
   # Bitnami Grafana values
   ingress:
     # Kong will route traffic; keep Grafana ingress disabled.
     enabled: false
-  image:
-    registry: docker.io
-    repository: bitnami/grafana
-    tag: 11.1.0
+
   admin:
     user: admin
     existingSecret: transit-platform-grafana-admin
