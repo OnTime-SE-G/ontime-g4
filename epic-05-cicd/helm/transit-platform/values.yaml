@@ -217,7 +217,7 @@ influxdb:
   image:
     registry: docker.io
     repository: bitnamilegacy/influxdb
-    tag: latest
+    tag: 2.7.11
     pullPolicy: Always
   networkPolicy:
     enabled: false
