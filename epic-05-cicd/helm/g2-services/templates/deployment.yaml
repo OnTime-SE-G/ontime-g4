@@ -2,6 +2,7 @@
 # yamllint disable rule:syntax
 {{- range $name, $svc := .Values.services }}
 {{- $fullName := printf "%s-g2-%s" $.Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- $secretName := default $fullName $svc.secretName }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -23,6 +24,17 @@ spec:
         app.kubernetes.io/instance: "{{ $.Release.Name }}"
         app.kubernetes.io/component: "{{ $name }}"
     spec:
+      {{- if $svc.serviceAccountName }}
+      serviceAccountName: "{{ $svc.serviceAccountName }}"
+      {{- end }}
+      {{- if $svc.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml $svc.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- if $svc.podSecurityContext }}
+      securityContext:
+        {{- toYaml $svc.podSecurityContext | nindent 8 }}
+      {{- end }}
       containers:
         - name: "{{ $name }}"
           image: "{{ $svc.image.repository }}:{{ $svc.image.tag }}"
@@ -31,7 +43,15 @@ spec:
             - name: http
               containerPort: {{ $svc.containerPort }}
               protocol: TCP
-          {{- if or $svc.env $svc.secrets }}
+          {{- if $svc.securityContext }}
+          securityContext:
+            {{- toYaml $svc.securityContext | nindent 12 }}
+          {{- end }}
+          {{- if $svc.resources }}
+          resources:
+            {{- toYaml $svc.resources | nindent 12 }}
+          {{- end }}
+          {{- if or $svc.env $svc.secrets $svc.secretKeys }}
           env:
             {{- range $key, $value := $svc.env }}
             - name: "{{ $key }}"
@@ -41,9 +61,32 @@ spec:
             - name: "{{ $key }}"
               valueFrom:
                 secretKeyRef:
-                  name: "{{ $fullName }}"
+                  name: "{{ $secretName }}"
                   key: "{{ $key }}"
             {{- end }}
+            {{- range $key := $svc.secretKeys }}
+            - name: "{{ $key }}"
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ $secretName }}"
+                  key: "{{ $key }}"
+            {{- end }}
+          {{- end }}
+          {{- if $svc.envFrom }}
+          envFrom:
+            {{- toYaml $svc.envFrom | nindent 12 }}
+          {{- end }}
+          {{- if $svc.livenessProbe }}
+          livenessProbe:
+            {{- toYaml $svc.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if $svc.readinessProbe }}
+          readinessProbe:
+            {{- toYaml $svc.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- if $svc.startupProbe }}
+          startupProbe:
+            {{- toYaml $svc.startupProbe | nindent 12 }}
           {{- end }}
 ---
 {{- end }}

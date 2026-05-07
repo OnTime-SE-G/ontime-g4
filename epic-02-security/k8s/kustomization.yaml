@@ -13,10 +13,6 @@ resources:
   - kong-deployment.yaml
   - kong-service.yaml
   - kong-hpa.yaml
-  - redis/redis-deployment.yaml 
+  - redis/redis-deployment.yaml
   - keycloak/keycloak-deployment.yaml
   - keycloak/keycloak-secrets.yaml
-
-
-
-   

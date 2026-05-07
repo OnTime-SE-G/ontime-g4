@@ -26,4 +26,14 @@ spec:
             - name: "{{ $key }}"
               value: {{ $value | quote }}
             {{- end }}
+          {{- if or .Values.envFrom .Values.envFromSecret }}
+          envFrom:
+            {{- if .Values.envFromSecret }}
+            - secretRef:
+                name: "{{ .Values.envFromSecret }}"
+            {{- end }}
+            {{- if .Values.envFrom }}
+            {{- toYaml .Values.envFrom | nindent 12 }}
+            {{- end }}
+          {{- end }}
 

@@ -75,9 +75,9 @@ spec:
           image: quay.io/keycloak/keycloak:23.0
           imagePullPolicy: IfNotPresent
           args: ["start"]
-          
+
           # Environment variables for configuring Keycloak (DB connection, admin credentials, URLs, etc.)
-          env: 
+          env:
             - name: KC_DB
               value: postgres
             # Database keycloak_db — see postgres-init-script in transit-data
@@ -166,7 +166,7 @@ spec:
             limits:
               cpu: "1000m"
               memory: "1Gi"
-              
+
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false

@@ -20,6 +20,9 @@ dependencies:
 - name: grafana
   repository: https://charts.bitnami.com/bitnami
   version: 10.1.1
+- name: redis
+  repository: https://charts.bitnami.com/bitnami
+  version: 20.13.4
 - name: mosquitto
   repository: file://../mosquitto
   version: 0.1.0
@@ -29,5 +32,5 @@ dependencies:
 - name: g2-services
   repository: file://../g2-services
   version: 0.1.0
-digest: sha256:b94cd267b9edb72783c8cdda2f4c1ab385b83b890d9fc5d71a741767986fa031
-generated: "2026-05-05T17:28:42.41482+05:30"
+digest: sha256:cf01ff13def12406d1d1315fc1dd051adb5a33d4fe537e597817d9059f2bd33c
+generated: "2026-05-05T18:25:52.374252+05:30"

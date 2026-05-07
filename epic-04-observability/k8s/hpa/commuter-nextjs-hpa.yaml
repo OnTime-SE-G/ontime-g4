@@ -2,28 +2,24 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: commuter-nextjs-hpa
-  namespace: transit-ui
+  namespace: transit-platform
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: commuter-nextjs
   minReplicas: 2
-  maxReplicas: 10
+  maxReplicas: 12
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-  - type: Pods
-    pods:
-      metric:
-        name: socket_connections_per_pod
-      target:
-        type: AverageValue
-        averageValue: 1000
-  behavior:
-    scaleDown:
-      stabilizationWindowSeconds: 300
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 65
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

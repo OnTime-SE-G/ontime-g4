@@ -1,0 +1,43 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: api-gateway-mock
+    url: http://api-gateway-mock:80
+    routes:
+      - name: api-v1
+        paths:
+          - /api/v1/
+        strip_path: true
+
+      - name: scheduler-dispatch
+        paths:
+          - /api/v1/scheduler/dispatch
+        plugins:
+          - name: jwt
+            config:
+              key_claim_name: iss
+
+      - name: driver-status
+        paths:
+          - /api/v1/driver/status
+        plugins:
+          - name: jwt
+            config:
+              key_claim_name: iss
+
+  - name: websocket-mock
+    url: http://websocket-mock:8004
+    routes:
+      - name: websocket-live
+        paths:
+          - /v1/live
+        strip_path: false
+        methods: [GET]
+
+consumers:
+  - username: test-user
+    jwt_secrets:
+      - algorithm: HS256
+        key: "test-issuer"
+        secret: "test-secret"

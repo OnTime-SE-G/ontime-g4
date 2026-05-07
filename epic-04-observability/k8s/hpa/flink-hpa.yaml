@@ -11,22 +11,22 @@ spec:
   minReplicas: 2
   maxReplicas: 6
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 75
-  - type: External
-    external:
-      metric:
-        name: kafka_consumer_group_lag
-        selector:
-          matchLabels:
-            group: raw-gps-consumer
-      target:
-        type: AverageValue
-        averageValue: 10000
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 75
+    - type: External
+      external:
+        metric:
+          name: kafka_consumer_group_lag
+          selector:
+            matchLabels:
+              group: raw-gps-consumer
+        target:
+          type: AverageValue
+          averageValue: 10000
   behavior:
     scaleDown:
       stabilizationWindowSeconds: 600

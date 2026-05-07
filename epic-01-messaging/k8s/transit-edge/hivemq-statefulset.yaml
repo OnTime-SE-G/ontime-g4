@@ -15,44 +15,44 @@ spec:
         app: hivemq
     spec:
       containers:
-      - name: hivemq
-        image: hivemq/hivemq-ce:latest
-        ports:
-        - containerPort: 1883
-          name: mqtt
-        - containerPort: 8883
-          name: mqtts
-        volumeMounts:
-        - name: config-volume
-          mountPath: /opt/hivemq/conf/config.xml
-          subPath: config.xml
-        - name: data-volume
-          mountPath: /opt/hivemq/data
-        - name: tls-secret-volume
-          mountPath: /opt/hivemq/certs
-          readOnly: true
-        livenessProbe:
-          tcpSocket:
-            port: 1883
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          tcpSocket:
-            port: 1883
-          initialDelaySeconds: 15
-          periodSeconds: 10
+        - name: hivemq
+          image: hivemq/hivemq-ce:latest
+          ports:
+            - containerPort: 1883
+              name: mqtt
+            - containerPort: 8883
+              name: mqtts
+          volumeMounts:
+            - name: config-volume
+              mountPath: /opt/hivemq/conf/config.xml
+              subPath: config.xml
+            - name: data-volume
+              mountPath: /opt/hivemq/data
+            - name: tls-secret-volume
+              mountPath: /opt/hivemq/certs
+              readOnly: true
+          livenessProbe:
+            tcpSocket:
+              port: 1883
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 1883
+            initialDelaySeconds: 15
+            periodSeconds: 10
       volumes:
-      - name: config-volume
-        configMap:
-          name: hivemq-config
-      - name: tls-secret-volume
-        secret:
-          secretName: hivemq-tls-secret
+        - name: config-volume
+          configMap:
+            name: hivemq-config
+        - name: tls-secret-volume
+          secret:
+            secretName: hivemq-tls-secret
   volumeClaimTemplates:
-  - metadata:
-      name: data-volume
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: 2Gi
+    - metadata:
+        name: data-volume
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi

@@ -29,11 +29,37 @@ This folder is for the delivery pipeline, Helm packaging, cluster bootstrap, and
 2. SDD section 8.1 for namespace layout.
 3. G4 guide sections 2, 3, 6, and 8 for repository and PR flow.
 
+## Documentation
+
+- **[Environments & Secrets](../../docs/ci-cd/environments.md)** — DOKS cluster, Kubernetes namespaces, secret strategy
+- **[GitHub Actions Secrets](../../docs/ci-cd/ghcr-secrets.md)** — Required secrets and GHCR configuration
+- **[Kong Routing](../../docs/ci-cd/kong-routing.md)** — API Gateway routing to G2 services
+- **[G2 Image Tags](../../docs/ci-cd/g2-image-tags.md)** — Image tag strategies and deployment procedures
+- **[Release & Rollback](../../docs/ci-cd/release-rollback.md)** — Manual release steps, canary flow, rollback
+- **[Incident Runbook](../../docs/ci-cd/incident-runbook.md)** — Troubleshooting common issues
+
 ## Start here
 
 1. Keep Helm values free of secrets.
 2. Make rollout steps reproducible and documented.
 3. Verify the pipeline before adding new deployment logic.
+
+Secrets for staging are sourced from GitHub Actions secrets and applied to the
+cluster using epic-05-cicd/scripts/apply-secrets.sh. Do not commit secret values
+to YAML files.
+
+## Release and incident docs
+
+- [docs/ci-cd/release-rollback.md](docs/ci-cd/release-rollback.md)
+- [docs/ci-cd/incident-runbook.md](docs/ci-cd/incident-runbook.md)
+
+## Environment targets (epic-05)
+
+- Primary cluster: DigitalOcean DOKS (staging).
+- Secrets: plain Kubernetes Secrets for staging.
+- Service mesh (Istio/Linkerd): not in scope for epic-05.
+
+See [docs/ci-cd/environments.md](docs/ci-cd/environments.md) for the full environment layout and Helm release plan.
 
 ## G4-37 GHCR and secrets
 

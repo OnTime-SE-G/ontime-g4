@@ -4,3 +4,5 @@ image:
   pullPolicy: IfNotPresent
 
 env: {}
+envFrom: []
+envFromSecret: ""

@@ -1,0 +1,13 @@
+{{- if .Values.kong.configMap.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "transit-platform.fullname" . }}-kong-declarative
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "transit-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kong
+data:
+  kong.yaml: |
+{{ .Values.kong.configMap.config | indent 4 }}
+{{- end }}
