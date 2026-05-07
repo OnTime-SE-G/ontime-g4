@@ -211,6 +211,13 @@ keycloak:
     database: g4_platform
     existingSecret: "transit-platform-postgresql-auth"
     existingSecretPasswordKey: "password"
+  extraEnvVars:
+    - name: KC_HTTP_RELATIVE_PATH
+      value: "/auth"
+    - name: KC_PROXY
+      value: "edge"
+    - name: KC_HOSTNAME_STRICT
+      value: "false"
 
 influxdb:
   # Bitnami InfluxDB values
