@@ -324,6 +324,7 @@ jobs:
           GHCR_USER: ${{ github.actor }}
           K8S_NAMESPACE: ${{ env.K8S_NAMESPACE }}
         run: |
+          kubectl create namespace ${{ env.K8S_NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
           bash epic-05-cicd/scripts/apply-secrets.sh
 
       - name: Deploy Helm chart
