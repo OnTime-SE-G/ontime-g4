@@ -10,14 +10,23 @@ postgresql:
     secretKeys:
       adminPasswordKey: postgres-password
       userPasswordKey: password
+  image:
+    registry: docker.io
+    repository: postgis/postgis
+    tag: 16-3.4
+    pullPolicy: Always
   primary:
     persistence:
-      # Staging-sized volume.
       size: 8Gi
 
 
 kafka:
   # Bitnami Kafka values — KRaft mode (no ZooKeeper needed)
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/kafka
+    tag: latest
+    pullPolicy: Always
   auth:
     enabled: false
   listeners:
@@ -31,11 +40,15 @@ kafka:
     # Staging-sized volume.
     size: 8Gi
 
-
 redis:
   # Bitnami Redis values
   auth:
     enabled: false
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/redis
+    tag: latest
+    pullPolicy: Always
   master:
     persistence:
       size: 2Gi
@@ -146,7 +159,11 @@ kong:
 
 keycloak:
   # Bitnami Keycloak values
-
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/keycloak
+    tag: latest
+    pullPolicy: Always
   ingress:
     # Kong will route traffic; keep Keycloak ingress disabled.
     enabled: false
@@ -157,7 +174,11 @@ keycloak:
 
 influxdb:
   # Bitnami InfluxDB values
-
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/influxdb
+    tag: latest
+    pullPolicy: Always
   auth:
     enabled: true
     adminUser: admin
@@ -168,6 +189,18 @@ influxdb:
 
 prometheus:
   # Bitnami Prometheus values
+  server:
+    image:
+      registry: docker.io
+      repository: bitnamilegacy/prometheus
+      tag: latest
+      pullPolicy: Always
+  alertmanager:
+    image:
+      registry: docker.io
+      repository: bitnamilegacy/alertmanager
+      tag: latest
+      pullPolicy: Always
   ingress:
     # Kong will route traffic; keep Prometheus ingress disabled.
     enabled: false
@@ -175,6 +208,11 @@ prometheus:
 
 grafana:
   # Bitnami Grafana values
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/grafana
+    tag: latest
+    pullPolicy: Always
   ingress:
     # Kong will route traffic; keep Grafana ingress disabled.
     enabled: false

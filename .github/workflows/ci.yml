@@ -338,5 +338,5 @@ jobs:
           helm upgrade --install transit-platform ./epic-05-cicd/helm/transit-platform \
             -n ${{ env.K8S_NAMESPACE }} --create-namespace \
             -f ./epic-05-cicd/helm/transit-platform/values-staging.yaml \
-            --force --wait --timeout 15m
+            --wait --timeout 15m
 
