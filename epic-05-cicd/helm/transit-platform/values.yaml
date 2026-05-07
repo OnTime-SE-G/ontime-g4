@@ -225,12 +225,16 @@ influxdb:
     enabled: true
     adminUser: admin
     existingSecret: "transit-platform-influxdb-auth"
-  # Final attempt: commonEnvVars is the most aggressive way to inject variables
+  # Brute force fix for chart bug ignoring extraEnvVars
+  extraEnv:
+    - name: INFLUXDB_NODE_ID
+      value: "1"
+  envVars:
+    - name: INFLUXDB_NODE_ID
+      value: "1"
   commonEnvVars:
     - name: INFLUXDB_NODE_ID
       value: "1"
-    - name: INFLUXDB_REPORTING_DISABLED
-      value: "true"
   persistence:
     # Staging-sized volume.
     size: 8Gi

@@ -52,6 +52,7 @@ kubectl -n "$NAMESPACE" create secret generic transit-platform-postgresql-auth \
   --from-literal=postgres-password="$POSTGRES_ADMIN_PASSWORD" \
   --from-literal=password="$POSTGRES_APP_PASSWORD" \
   --from-literal=replication-password="$POSTGRES_ADMIN_PASSWORD" \
+  --from-literal=database="$POSTGRES_DB" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl -n "$NAMESPACE" create secret generic transit-platform-keycloak-auth \
