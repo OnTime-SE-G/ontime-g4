@@ -42,6 +42,20 @@ check_ws() {
 	fi
 }
 
+echo "Waiting for gateway at $BASE_URL..."
+MAX_RETRIES=15
+COUNT=0
+until curl -s "$BASE_URL" >/dev/null || [ $COUNT -eq $MAX_RETRIES ]; do
+	sleep 2
+	COUNT=$((COUNT + 1))
+	echo "  Waiting... ($COUNT/$MAX_RETRIES)"
+done
+
+if [ $COUNT -eq $MAX_RETRIES ]; then
+	echo "[FAIL] Gateway did not become ready in time."
+	exit 1
+fi
+
 echo "Running smoke tests against: $BASE_URL"
 
 check_http "API gateway connectivity" "/api/v1/status/200"
