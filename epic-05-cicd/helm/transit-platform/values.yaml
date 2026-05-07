@@ -35,6 +35,11 @@ postgresql:
     extraVolumeMounts:
       - name: socket-dir
         mountPath: /var/run/postgresql
+    extraEnvVars:
+      - name: PGDATA
+        value: /bitnami/postgresql/data
+      - name: POSTGRESQL_EXTRA_FLAGS
+        value: "-c unix_socket_directories='/tmp'"
     persistence:
       size: 8Gi
 
@@ -221,7 +226,10 @@ influxdb:
   auth:
     enabled: true
     adminUser: admin
-    existingSecret: transit-platform-influxdb-auth
+    existingSecret: "transit-platform-influxdb-auth"
+  extraEnvVars:
+    - name: INFLUXDB_NODE_ID
+      value: "1"
   persistence:
     # Staging-sized volume.
     size: 8Gi
