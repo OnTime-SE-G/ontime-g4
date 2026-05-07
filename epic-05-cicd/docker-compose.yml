@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Minimal API Gateway mock for integration testing
   api-gateway-mock:
@@ -35,7 +33,7 @@ services:
 
   # Kong API Gateway (minimal for testing)
   kong:
-    image: kong:3.4-alpine
+    image: kong:3.8-alpine
     container_name: kong-test
     environment:
       KONG_DATABASE: "off"
