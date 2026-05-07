@@ -26,12 +26,16 @@ dependencies:
   - name: grafana
     version: "10.x.x"
     repository: "https://charts.bitnami.com/bitnami"
+  - name: redis
+    version: "20.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
   - name: mosquitto
     version: "0.1.0"
     repository: "file://../mosquitto"
   - name: flyway-job
     version: "0.1.0"
     repository: "file://../flyway-job"
+    condition: flyway-job.enabled
   - name: g2-services
     version: "0.1.0"
     repository: "file://../g2-services"

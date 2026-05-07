@@ -78,23 +78,21 @@ Personal access token for Digital Ocean API. Used for cluster provisioning (G4-3
 - Create a new Personal Access Token with read+write scope
 - Copy and paste into GitHub repository secret
 
-#### 4. POSTGRES_PASSWORD (Optional for integration tests)
+#### 4. Platform Passwords (Required for staging)
 
-Database password for test database connections.
+These secrets are used to generate Kubernetes Secrets during deploy.
 
-**Example:**
-```bash
-echo -n "your-secure-password" | base64 | tr -d '\n'
-```
+- POSTGRES_ADMIN_PASSWORD
+- POSTGRES_APP_PASSWORD
+- KEYCLOAK_ADMIN_PASSWORD
+- INFLUXDB_ADMIN_PASSWORD
+- INFLUXDB_ADMIN_TOKEN
+- GRAFANA_ADMIN_PASSWORD
+- FLYWAY_PASSWORD
+- G2_INFLUXDB_TOKEN
 
-#### 5. INFLUXDB_TOKEN (Optional for integration tests)
-
-API token for InfluxDB integration tests.
-
-**How to create:**
-- Access InfluxDB UI (usually http://localhost:8086)
-- API Tokens → Generate new token
-- Copy and paste into GitHub repository secret
+These values are consumed by the apply script:
+- epic-05-cicd/scripts/apply-secrets.sh
 
 ### Checking Secrets
 

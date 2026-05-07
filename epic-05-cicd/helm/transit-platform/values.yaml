@@ -4,38 +4,142 @@
 postgresql:
   # Bitnami PostgreSQL values
   auth:
-    # TODO: Replace with a Secret or external secret manager in production.
     username: g4_app
-    password: "CHANGE_ME_POSTGRES_PASSWORD"
     database: g4_platform
+    existingSecret: transit-platform-postgresql-auth
+    secretKeys:
+      adminPasswordKey: postgres-password
+      userPasswordKey: password
   primary:
     persistence:
       # Staging-sized volume.
       size: 8Gi
 
 kafka:
-  # Bitnami Kafka values
+  # Bitnami Kafka values — KRaft mode (no ZooKeeper needed)
   auth:
-    # TODO: Replace with a Secret or external secret manager in production.
-    enabled: true
-    clientProtocol: sasl
-    saslMechanisms: plain
-    sasl:
-      client:
-        users:
-          - kafka
-        passwords:
-          - "CHANGE_ME_KAFKA_PASSWORD"
+    enabled: false
+  listeners:
+    client:
+      protocol: PLAINTEXT
+    interbroker:
+      protocol: PLAINTEXT
+    controller:
+      protocol: PLAINTEXT
   persistence:
     # Staging-sized volume.
     size: 8Gi
 
+redis:
+  # Bitnami Redis values
+  auth:
+    enabled: false
+  master:
+    persistence:
+      size: 2Gi
+  replica:
+    replicaCount: 0
+
 kong:
-  # Kong ingress controller/gateway values
+  # Kong ingress controller/gateway values (dbless mode with declarative config)
+  database: "off"
   ingressController:
     enabled: true
   proxy:
     type: LoadBalancer
+  # Declarative config: routes to G2 microservices and platform services
+  admin:
+    # Kong admin API disabled; config is declarative only
+    enabled: false
+  # Volume mount for declarative config file
+  extraVolumes:
+    - name: kong-declarative-config
+      configMap:
+        name: '{{ include "transit-platform.fullname" . }}-kong-declarative'
+  extraVolumeMounts:
+    - name: kong-declarative-config
+      mountPath: /etc/kong
+      readOnly: true
+  # Environment for dbless mode
+  env:
+    KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yaml
+    KONG_PROXY_ACCESS_LOG: /dev/stdout
+    KONG_ADMIN_ACCESS_LOG: /dev/stdout
+    KONG_PROXY_ERROR_LOG: /dev/stderr
+    KONG_ADMIN_ERROR_LOG: /dev/stderr
+  # ConfigMap containing Kong declarative configuration
+  configMap:
+    enabled: true
+    config: |
+      _format_version: "3.0"
+      _transform: true
+
+      services:
+        - name: api-gateway
+          host: transit-platform-g2-api-gateway
+          port: 8000
+          protocol: http
+          routes:
+            - name: api-v1-routes
+              paths:
+                - /api/v1
+                - /api/v1/*
+              methods:
+                - GET
+                - POST
+                - PUT
+                - DELETE
+                - PATCH
+                - OPTIONS
+
+        - name: websocket-service
+          host: transit-platform-g2-websocket-service
+          port: 8004
+          protocol: http
+          routes:
+            - name: websocket-live
+              paths:
+                - /v1/live
+              methods:
+                - GET
+                - POST
+
+        - name: keycloak
+          host: transit-platform-keycloak
+          port: 80
+          protocol: http
+          routes:
+            - name: keycloak-auth
+              paths:
+                - /auth
+                - /auth/*
+              methods:
+                - GET
+                - POST
+
+        - name: grafana
+          host: transit-platform-grafana
+          port: 80
+          protocol: http
+          routes:
+            - name: grafana-dashboard
+              paths:
+                - /grafana
+                - /grafana/*
+              strip_path: true
+
+        - name: health-service
+          host: transit-platform-g2-api-gateway
+          port: 8000
+          protocol: http
+          routes:
+            - name: health
+              paths:
+                - /health
+              methods:
+                - GET
+
+      consumers: []
 
 keycloak:
   # Bitnami Keycloak values
@@ -43,18 +147,16 @@ keycloak:
     # Kong will route traffic; keep Keycloak ingress disabled.
     enabled: false
   auth:
-    # TODO: Replace with a Secret or external secret manager in production.
     adminUser: admin
-    adminPassword: "CHANGE_ME_KEYCLOAK_ADMIN_PASSWORD"
+    existingSecret: transit-platform-keycloak-auth
+    passwordSecretKey: admin-password
 
 influxdb:
   # Bitnami InfluxDB values
   auth:
-    # TODO: Replace with a Secret or external secret manager in production.
     enabled: true
     adminUser: admin
-    adminPassword: "CHANGE_ME_INFLUXDB_ADMIN_PASSWORD"
-    adminToken: "CHANGE_ME_INFLUXDB_ADMIN_TOKEN"
+    existingSecret: transit-platform-influxdb-auth
   persistence:
     # Staging-sized volume.
     size: 8Gi
@@ -71,28 +173,34 @@ grafana:
     # Kong will route traffic; keep Grafana ingress disabled.
     enabled: false
   admin:
-    # TODO: Replace with a Secret or external secret manager in production.
     user: admin
-    password: "CHANGE_ME_GRAFANA_ADMIN_PASSWORD"
+    existingSecret: transit-platform-grafana-admin
+    existingSecretPasswordKey: admin-password
 
 mosquitto:
   # Local mosquitto chart values
   persistence:
     enabled: true
     # Staging-sized volume.
-    size: 8Gi
+    size: 2Gi
 
 flyway-job:
+  enabled: true
   # Local flyway job values
   image:
     repository: flyway/flyway
     tag: "10.15"
-  # TODO: Replace with a Secret or external secret manager in production.
+    pullPolicy: IfNotPresent
   env:
-    FLYWAY_URL: "jdbc:postgresql://postgresql:5432/g4_platform"
+    FLYWAY_URL: "jdbc:postgresql://transit-platform-postgresql:5432/g4_platform"
     FLYWAY_USER: g4_app
-    FLYWAY_PASSWORD: "CHANGE_ME_FLYWAY_PASSWORD"
+  envFromSecret: transit-platform-flyway
 
+# ─────────────────────────────────────────────────────────
+# G2 Microservices
+# Service URLs use Helm-generated names: transit-platform-<dep>
+# G2 inter-service URLs use: transit-platform-g2-<service>
+# ─────────────────────────────────────────────────────────
 g2-services:
   services:
     api-gateway:
@@ -104,12 +212,25 @@ g2-services:
       service:
         type: ClusterIP
         port: 8000
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: http
+        initialDelaySeconds: 10
+        periodSeconds: 30
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: http
+        initialDelaySeconds: 5
+        periodSeconds: 10
       env:
-        REDIS_URL: "redis://redis:6379/0"
-        ROUTE_SERVICE_URL: "http://route-service:8002"
-        FLEET_SERVICE_URL: "http://fleet-management-service:8003"
-      secrets:
-        DATABASE_URL: "postgresql://g4_app:CHANGE_ME_POSTGRES_PASSWORD@postgresql:5432/g4_platform"
+        REDIS_URL: "redis://transit-platform-redis-master:6379/0"
+        ROUTE_SERVICE_URL: "http://transit-platform-g2-route-service:8002"
+        FLEET_SERVICE_URL: "http://transit-platform-g2-fleet-management-service:8003"
+      secretName: g2-api-gateway-secret
+      secretKeys:
+        - DATABASE_URL
 
     route-service:
       image:
@@ -120,9 +241,22 @@ g2-services:
       service:
         type: ClusterIP
         port: 8002
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: http
+        initialDelaySeconds: 10
+        periodSeconds: 30
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: http
+        initialDelaySeconds: 5
+        periodSeconds: 10
       env: {}
-      secrets:
-        DATABASE_URL: "postgresql://g4_app:CHANGE_ME_POSTGRES_PASSWORD@postgresql:5432/g4_platform"
+      secretName: g2-route-service-secret
+      secretKeys:
+        - DATABASE_URL
 
     fleet-management-service:
       image:
@@ -133,12 +267,25 @@ g2-services:
       service:
         type: ClusterIP
         port: 8003
+      livenessProbe:
+        httpGet:
+          path: /health/live
+          port: http
+        initialDelaySeconds: 15
+        periodSeconds: 30
+      readinessProbe:
+        httpGet:
+          path: /health/ready
+          port: http
+        initialDelaySeconds: 10
+        periodSeconds: 10
       env:
-        ROUTE_SERVICE_URL: "http://route-service:8002"
-        KAFKA_BROKER_URL: "kafka:9092"
+        ROUTE_SERVICE_URL: "http://transit-platform-g2-route-service:8002"
+        KAFKA_BROKER_URL: "transit-platform-kafka:9092"
         KAFKA_TRIP_LIFECYCLE_TOPIC: "trip.lifecycle"
-      secrets:
-        DATABASE_URL: "postgresql://g4_app:CHANGE_ME_POSTGRES_PASSWORD@postgresql:5432/g4_platform"
+      secretName: g2-fleet-management-secret
+      secretKeys:
+        - DATABASE_URL
 
     ingestion:
       image:
@@ -149,14 +296,26 @@ g2-services:
       service:
         type: ClusterIP
         port: 8001
+      livenessProbe:
+        httpGet:
+          path: /health/live
+          port: http
+        initialDelaySeconds: 20
+        periodSeconds: 30
+      readinessProbe:
+        httpGet:
+          path: /health/ready
+          port: http
+        initialDelaySeconds: 15
+        periodSeconds: 10
       env:
-        MQTT_BROKER_HOST: "mosquitto"
+        MQTT_BROKER_HOST: "transit-platform-mosquitto"
         MQTT_BROKER_PORT: "1883"
         MQTT_TOPIC_PATTERN: "transport/bus/+/location"
         MQTT_HEARTBEAT_TOPIC_PATTERN: "transport/bus/+/heartbeat"
         MQTT_TLS_ENABLED: "false"
         MQTT_CLIENT_ID: "ontime-ingestion-service"
-        KAFKA_BROKER_URL: "kafka:9092"
+        KAFKA_BROKER_URL: "transit-platform-kafka:9092"
         INGESTION_KAFKA_RAW_TOPIC: "transport-telemetry-raw"
         INGESTION_KAFKA_DLQ_TOPIC: "transport-telemetry-dlq"
         INGESTION_KAFKA_TRIP_LIFECYCLE_TOPIC: "trip.lifecycle"
@@ -181,8 +340,20 @@ g2-services:
       service:
         type: ClusterIP
         port: 8004
+      livenessProbe:
+        httpGet:
+          path: /health/live
+          port: http
+        initialDelaySeconds: 15
+        periodSeconds: 30
+      readinessProbe:
+        httpGet:
+          path: /health/ready
+          port: http
+        initialDelaySeconds: 10
+        periodSeconds: 10
       env:
-        REDIS_URL: "redis://redis:6379"
+        REDIS_URL: "redis://transit-platform-redis-master:6379"
         FLEET_CHANNEL: "fleet:live"
         ETA_CHANNEL: "eta:live"
       secrets: {}
@@ -196,13 +367,25 @@ g2-services:
       service:
         type: ClusterIP
         port: 8006
+      livenessProbe:
+        httpGet:
+          path: /health/live
+          port: http
+        initialDelaySeconds: 15
+        periodSeconds: 30
+      readinessProbe:
+        httpGet:
+          path: /health/ready
+          port: http
+        initialDelaySeconds: 10
+        periodSeconds: 10
       env:
-        KAFKA_BROKER_URL: "kafka:9092"
+        KAFKA_BROKER_URL: "transit-platform-kafka:9092"
         KAFKA_CLEANED_TOPIC: "transport-telemetry-cleaned"
         KAFKA_DLQ_TOPIC: "transport-telemetry-dlq"
         KAFKA_ANOMALY_TOPIC: "transport-anomaly-alerts"
         KAFKA_DLQ_GROUP_ID: "anomaly-service-dlq-group"
-        ROUTE_SERVICE_URL: "http://route-service:8002"
+        ROUTE_SERVICE_URL: "http://transit-platform-g2-route-service:8002"
         COMMUNICATION_LOSS_CHECK_INTERVAL_SECONDS: "60"
         COMMUNICATION_LOSS_THRESHOLD_SECONDS: "180"
         INACTIVE_TRIP_DLQ_THRESHOLD_COUNT: "3"
@@ -219,16 +402,27 @@ g2-services:
       service:
         type: ClusterIP
         port: 8081
+      livenessProbe:
+        tcpSocket:
+          port: 8081
+        initialDelaySeconds: 30
+        periodSeconds: 30
+      readinessProbe:
+        tcpSocket:
+          port: 8081
+        initialDelaySeconds: 20
+        periodSeconds: 10
       env:
-        KAFKA_BROKER_URL: "kafka:9092"
+        KAFKA_BROKER_URL: "transit-platform-kafka:9092"
         KAFKA_RAW_TOPIC: "transport-telemetry-raw"
         KAFKA_CLEANED_TOPIC: "transport-telemetry-cleaned"
         KAFKA_LIFECYCLE_TOPIC: "trip.lifecycle"
-        REDIS_HOST: "redis"
+        REDIS_HOST: "transit-platform-redis-master"
         REDIS_PORT: "6379"
-        INFLUXDB_URL: "http://influxdb:8086"
+        INFLUXDB_URL: "http://transit-platform-influxdb:8086"
         INFLUXDB_ORG: "ontime"
         INFLUXDB_BUCKET: "telemetry"
-        ROUTE_SERVICE_URL: "http://route-service:8002"
-      secrets:
-        INFLUXDB_TOKEN: "CHANGE_ME_INFLUXDB_ADMIN_TOKEN"
+        ROUTE_SERVICE_URL: "http://transit-platform-g2-route-service:8002"
+      secretName: g2-stream-processing-secret
+      secretKeys:
+        - INFLUXDB_TOKEN

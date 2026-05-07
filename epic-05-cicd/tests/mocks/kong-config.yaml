@@ -1,0 +1,31 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: api-gateway-mock
+    url: http://api-gateway-mock:80
+    routes:
+      - name: api-v1
+        paths:
+          - /api/v1
+        strip_path: false
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - PATCH
+  
+  - name: websocket-mock
+    url: http://websocket-mock:8004
+    routes:
+      - name: websocket-live
+        paths:
+          - /v1/live
+        strip_path: false
+        methods:
+          - GET
+
+consumers:
+  - username: test-user
+    custom_id: test-id-001

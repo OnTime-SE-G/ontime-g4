@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # Minimal API Gateway mock for integration testing
+  api-gateway-mock:
+    image: kennethreitz/httpbin:latest
+    container_name: api-gateway-mock
+    ports:
+      - "8000:80"
+    environment:
+      - FORWARDED_ALLOW_IPS=*
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # Minimal WebSocket server for testing live endpoints
+  websocket-mock:
+    image: node:18-alpine
+    container_name: websocket-mock
+    working_dir: /app
+    volumes:
+      - ./tests/mocks/websocket-server.js:/app/server.js
+    command: node server.js
+    ports:
+      - "8004:8004"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # Kong API Gateway (minimal for testing)
+  kong:
+    image: kong:3.4-alpine
+    container_name: kong-test
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yaml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: "127.0.0.1:8001"
+    volumes:
+      - ./tests/mocks/kong-config.yaml:/kong/kong.yaml
+    ports:
+      - "8080:8000"
+      - "8443:8443"
+    depends_on:
+      - api-gateway-mock
+      - websocket-mock
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+networks:
+  default:
+    name: integration-test-net
