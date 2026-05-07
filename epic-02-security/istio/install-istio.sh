@@ -244,7 +244,7 @@ verify() {
   echo -e "\n[ AC-5 ] Kiali dashboard reachable"
   local kiali_ready
   kiali_ready=$(kubectl get pods -n istio-system -l app=kiali \
-    --no-headers 2>/dev/null | grep Running | wc -l)
+    --no-headers 2>/dev/null | grep -c Running)
   if [[ "$kiali_ready" -ge 1 ]]; then
     success "  Kiali pod running ✓"
     success "  Access: kubectl port-forward svc/kiali 20001:20001 -n istio-system"
