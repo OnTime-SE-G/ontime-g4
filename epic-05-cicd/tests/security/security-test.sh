@@ -23,7 +23,7 @@ else
 	exit 1
 fi
 
-status=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/driver/status" || true)
+status=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/v1/driver/status" || true)
 if [[ "$status" == "401" || "$status" == "403" ]]; then
 	echo "[OK] Unauthorized driver status is blocked ($status)."
 else
