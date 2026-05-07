@@ -27,6 +27,8 @@ postgresql:
   networkPolicy:
     enabled: false
   primary:
+    containerSecurityContext:
+      readOnlyRootFilesystem: false
     persistence:
       size: 8Gi
 
@@ -198,8 +200,8 @@ keycloak:
     port: 5432
     user: g4_app
     database: g4_platform
-    existingSecret: transit-platform-postgresql-auth
-    existingSecretPasswordKey: password
+    existingSecret: "transit-platform-postgresql-auth"
+    existingSecretPasswordKey: "password"
 
 influxdb:
   # Bitnami InfluxDB values
