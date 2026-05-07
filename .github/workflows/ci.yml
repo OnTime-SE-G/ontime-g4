@@ -344,5 +344,5 @@ jobs:
             --set g2-services.services.websocket-service.image.tag=sha-$SHORT_SHA \
             --set g2-services.services.anomaly-service.image.tag=sha-$SHORT_SHA \
             --set g2-services.services.stream-processing.image.tag=sha-$SHORT_SHA \
-            --wait --timeout 5m
+            --wait --timeout 10m
 
