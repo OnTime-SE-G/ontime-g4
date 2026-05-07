@@ -15,7 +15,7 @@ services:
           - PUT
           - DELETE
           - PATCH
-  
+
   - name: websocket-mock
     url: http://websocket-mock:8004
     routes:

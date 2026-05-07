@@ -54,61 +54,61 @@ spec:
         app: postgresql
     spec:
       containers:
-      - name: postgresql
-        image: postgis/postgis:16-3.4-alpine
-        imagePullPolicy: IfNotPresent
-        ports:
-        - name: postgres
-          containerPort: 5432
-        env:
-        - name: POSTGRES_DB
-          value: "ontime_db"
-        - name: POSTGRES_USER
-          valueFrom:
-            secretKeyRef:
-              name: postgres-credentials
-              key: username
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: postgres-credentials
-              key: password
-        readinessProbe:
-          exec:
-            command:
-              - sh
-              - -c
-              - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 6
-        livenessProbe:
-          exec:
-            command:
-              - sh
-              - -c
-              - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-          initialDelaySeconds: 30
-          periodSeconds: 20
-          timeoutSeconds: 5
-          failureThreshold: 6
-        volumeMounts:
-        - name: postgres-storage
-          mountPath: /var/lib/postgresql/data
-        - name: init-script-volume
-          mountPath: /docker-entrypoint-initdb.d/
-          readOnly: true
+        - name: postgresql
+          image: postgis/postgis:16-3.4-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: "ontime_db"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: password
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+            - name: init-script-volume
+              mountPath: /docker-entrypoint-initdb.d/
+              readOnly: true
       volumes:
-      - name: init-script-volume
-        configMap:
-          name: postgres-init-script
+        - name: init-script-volume
+          configMap:
+            name: postgres-init-script
   volumeClaimTemplates:
-  - metadata:
-      name: postgres-storage
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      storageClassName: do-block-storage
-      resources:
-        requests:
-          storage: 10Gi
+    - metadata:
+        name: postgres-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: do-block-storage
+        resources:
+          requests:
+            storage: 10Gi

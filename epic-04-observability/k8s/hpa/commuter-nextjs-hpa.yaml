@@ -4,13 +4,13 @@ metadata:
   name: commuter-nextjs-hpa
   namespace: transit-ui
 spec:
-  scaleTargetRef:
+    scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: commuter-nextjs
-  minReplicas: 2
-  maxReplicas: 10
-  metrics:
+    minReplicas: 2
+    maxReplicas: 10
+    metrics:
   - type: Resource
     resource:
       name: cpu

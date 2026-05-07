@@ -5,7 +5,7 @@ _transform: true
 # JWT Consumer — represents Keycloak as the token issuer.
 # Kong matches the 'iss' claim in incoming JWTs to this credential.
 # Also get public key manually once when setup cluster, using: http://<keycloak-host>/auth/realms/<realm-name>
-# key must exactly match the 'iss' claim in Keycloak JWTs. use: jwt.io 
+# key must exactly match the 'iss' claim in Keycloak JWTs. use: jwt.io
 # ─────────────────────────────────────────────────────────────────────────────
 consumers:
   - username: keycloak-issuer
@@ -22,7 +22,7 @@ consumers:
           ZyMp8BUOqNB94eNiV0m5/ujQAWuA0M7KZhvPhd1w1yS3WYZT67f1fzoASWppp3ao
           zQIDAQAB
           -----END PUBLIC KEY-----
-     
+
 # To test locally:
 #   kubectl port-forward -n transit-platform svc/kong-proxy 8088:80
 #   then open http://127.0.0.1:8088/auth/admin/
@@ -55,7 +55,7 @@ services:
               claims_to_verify:
                 - exp
               key_claim_name: iss
-         
+
 
 
   # ── Health — public, no JWT ────────────────────────────────────────────────
@@ -101,7 +101,7 @@ services:
           - name: jwt
             config:
               header_names: [Authorization]
-              claims_to_verify: 
+              claims_to_verify:
                 - exp
               key_claim_name: iss
           - name: rate-limiting
@@ -309,4 +309,4 @@ services:
               replace:
                 uri: "/headers"
 
-         
+

@@ -4,13 +4,13 @@ metadata:
   name: socket-io-adapter-hpa
   namespace: transit-ui
 spec:
-  scaleTargetRef:
+    scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: socket-io-adapter
-  minReplicas: 2
-  maxReplicas: 8
-  metrics:
+    minReplicas: 2
+    maxReplicas: 8
+    metrics:
   - type: Resource
     resource:
       name: cpu
