@@ -9,11 +9,11 @@ KONG_RELEASE="${2:-transit-platform}"
 
 # Wait for Kong to be ready
 echo "Waiting for Kong admin API to be ready..."
-kubectl rollout status deployment/${KONG_RELEASE}-kong -n ${KONG_NAMESPACE} --timeout=5m
+kubectl rollout status deployment/"${KONG_RELEASE}"-kong -n "${KONG_NAMESPACE}" --timeout=5m
 
 # Get Kong admin service IP (Kong uses admin on port 8001 internally)
 echo "Retrieving Kong admin API endpoint..."
-KONG_ADMIN_IP=$(kubectl get svc ${KONG_RELEASE}-kong-admin -n ${KONG_NAMESPACE} -o jsonpath='{.spec.clusterIP}')
+KONG_ADMIN_IP=$(kubectl get svc "${KONG_RELEASE}"-kong-admin -n "${KONG_NAMESPACE}" -o jsonpath='{.spec.clusterIP}')
 
 if [ -z "$KONG_ADMIN_IP" ]; then
   echo "ERROR: Could not find Kong admin service"
@@ -26,7 +26,7 @@ echo "Kong Admin URL: ${KONG_ADMIN_URL}"
 
 # Retrieve declarative config from ConfigMap
 echo "Retrieving Kong declarative config from ConfigMap..."
-KONG_CONFIG=$(kubectl get configmap ${KONG_RELEASE}-kong-declarative -n ${KONG_NAMESPACE} -o jsonpath='{.data.kong\.yaml}' 2>/dev/null || true)
+KONG_CONFIG=$(kubectl get configmap "${KONG_RELEASE}"-kong-declarative -n "${KONG_NAMESPACE}" -o jsonpath='{.data.kong\.yaml}' 2>/dev/null || true)
 
 if [ -z "$KONG_CONFIG" ]; then
   echo "WARNING: Kong declarative config ConfigMap not found. Skipping Kong config application."
@@ -36,11 +36,11 @@ fi
 # Create temporary file with config
 TEMP_CONFIG=$(mktemp)
 echo "$KONG_CONFIG" > "$TEMP_CONFIG"
-trap "rm -f $TEMP_CONFIG" EXIT
+trap 'rm -f "$TEMP_CONFIG"' EXIT
 
 # Apply declarative config via POST /config
 echo "Applying Kong declarative configuration..."
-curl -X POST ${KONG_ADMIN_URL}/config \
+curl -X POST "${KONG_ADMIN_URL}"/config \
   -H "Content-Type: application/yaml" \
   --data-binary @"$TEMP_CONFIG" \
   --silent --show-error \

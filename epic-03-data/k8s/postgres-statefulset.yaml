@@ -1,4 +1,4 @@
-﻿# 1. Namespace
+# 1. Namespace
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -12,9 +12,11 @@ metadata:
   namespace: transit-data
 type: Opaque
 data:
-  POSTGRES_PASSWORD: c3VwZXJzZWN1cmVwYXNzd29yZA==
+  # 'supersafepassword' in base64
+  password: c3VwZXJzYWZlcGFzc3dvcmQ=
+  username: dHJhbnNpdF9hZG1pbg==
 ---
-# 3. UPDATED ConfigMap for the Init Script
+# 3. ConfigMap for the Init Script
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -23,136 +25,8 @@ metadata:
 data:
   init.sql: |
     CREATE DATABASE keycloak_db;
-    
-    -- Connect to the transit_db created by the environment variables
-    \c transit_db
-    
-    -- Install the spatial extensions required for geo-fencing (G4-20)
-    CREATE EXTENSION IF NOT EXISTS postgis;
-    CREATE EXTENSION IF NOT EXISTS postgis_topology;
----
-# 4. UPDATED StatefulSet
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: postgresql
-  namespace: transit-data
-spec:
-  serviceName: "postgresql-service"
-  replicas: 1
-  selector:
-    matchLabels:
-      app: postgresql
-  template:
-    metadata:
-      labels:
-        app: postgresql
-    spec:
-      containers:
-      - name: postgresql
-        # We swapped to the PostGIS image!
-        image: postgis/postgis:16-3.4-alpine 
-        ports:
-        - containerPort: 5432
-        env:
-        # The Alpine image automatically creates transit_db in UTF-8
-        - name: POSTGRES_DB
-          value: "transit_db"
-        - name: POSTGRES_USER
-          value: "transit_admin"
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: postgres-credentials
-              key: POSTGRES_PASSWORD
-        volumeMounts:
-        - name: postgres-storage
-          mountPath: /var/lib/postgresql/data
-        - name: init-script-volume
-          mountPath: /docker-entrypoint-initdb.d/
-      volumes:
-      - name: init-script-volume
-        configMap:
-          name: postgres-init-script
-  volumeClaimTemplates:
-  - metadata:
-      name: postgres-storage
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      storageClassName: standard          # use do-block-storage if you want to use a block storage at production
-      resources:
-        requests:
-          storage: 10Gi
-
-# 3. UPDATED ConfigMap for the Init Script
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: postgres-init-script
-  namespace: transit-data
-data:
-  init.sql: |
-    CREATE DATABASE keycloak_db;
-    
-    -- Connect to the transit_db created by the environment variables
-    \c transit_db
-    
-    -- Install the spatial extensions required for geo-fencing (G4-20)
-    CREATE EXTENSION IF NOT EXISTS postgis;
-    CREATE EXTENSION IF NOT EXISTS postgis_topology;
----
-# 4. UPDATED StatefulSet
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: postgresql
-  namespace: transit-data
-spec:
-  serviceName: "postgresql-service"
-  replicas: 1
-  selector:
-    matchLabels:
-      app: postgresql
-  template:
-    metadata:
-      labels:
-        app: postgresql
-    spec:
-      containers:
-      - name: postgresql
-        # We swapped to the PostGIS image!
-        image: postgis/postgis:16-3.4-alpine 
-        ports:
-        - containerPort: 5432
-        env:
-        # The Alpine image automatically creates transit_db in UTF-8
-        - name: POSTGRES_DB
-          value: "transit_db"
-        - name: POSTGRES_USER
-          value: "transit_admin"
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: postgres-credentials
-              key: POSTGRES_PASSWORD
-        volumeMounts:
-        - name: postgres-storage
-          mountPath: /var/lib/postgresql/data
-        - name: init-script-volume
-          mountPath: /docker-entrypoint-initdb.d/
-      volumes:
-      - name: init-script-volume
-        configMap:
-          name: postgres-init-script
-  volumeClaimTemplates:
-  - metadata:
-      name: postgres-storage
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      storageClassName: standard          # use do-block-storage if you want to use a block storage at production
-      resources:
-        requests:
-          storage: 10Gi
+    CREATE DATABASE ontime_db;
+    CREATE DATABASE ontime_test_db;
 
     \connect ontime_db
     CREATE EXTENSION IF NOT EXISTS postgis;
@@ -162,13 +36,14 @@ spec:
     CREATE EXTENSION IF NOT EXISTS postgis;
     CREATE EXTENSION IF NOT EXISTS postgis_topology;
 ---
+# 4. StatefulSet
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: postgresql
   namespace: transit-data
 spec:
-  serviceName: postgresql-service
+  serviceName: "postgresql-service"
   replicas: 1
   selector:
     matchLabels:
@@ -179,62 +54,61 @@ spec:
         app: postgresql
     spec:
       containers:
-        - name: postgresql
-          image: postgis/postgis:16-3.4-alpine
-          imagePullPolicy: IfNotPresent
-          ports:
-            - name: postgres
-              containerPort: 5432
-          env:
-            - name: POSTGRES_DB
-              value: ontime_db
-            - name: POSTGRES_USER
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-credentials
-                  key: username
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-credentials
-                  key: password
-          readinessProbe:
-            exec:
-              command:
-                - sh
-                - -c
-                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 6
-          livenessProbe:
-            exec:
-              command:
-                - sh
-                - -c
-                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-            initialDelaySeconds: 30
-            periodSeconds: 20
-            timeoutSeconds: 5
-            failureThreshold: 6
-          volumeMounts:
-            - name: postgres-storage
-              mountPath: /var/lib/postgresql/data
-            - name: init-script-volume
-              mountPath: /docker-entrypoint-initdb.d
-              readOnly: true
-      volumes:
+      - name: postgresql
+        image: postgis/postgis:16-3.4-alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: postgres
+          containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "ontime_db"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        readinessProbe:
+          exec:
+            command:
+              - sh
+              - -c
+              - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        livenessProbe:
+          exec:
+            command:
+              - sh
+              - -c
+              - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+          initialDelaySeconds: 30
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 6
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
         - name: init-script-volume
-          configMap:
-            name: postgres-init-script
+          mountPath: /docker-entrypoint-initdb.d/
+          readOnly: true
+      volumes:
+      - name: init-script-volume
+        configMap:
+          name: postgres-init-script
   volumeClaimTemplates:
-    - metadata:
-        name: postgres-storage
-      spec:
-        accessModes:
-          - ReadWriteOnce
-        storageClassName: do-block-storage
-        resources:
-          requests:
-            storage: 10Gi
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: do-block-storage
+      resources:
+        requests:
+          storage: 10Gi

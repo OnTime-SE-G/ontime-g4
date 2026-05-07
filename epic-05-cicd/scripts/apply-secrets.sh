@@ -91,12 +91,12 @@ if [[ -n "${GHCR_TOKEN:-}" && -n "${GHCR_USER:-}" ]]; then
   echo "Applying GHCR pull secrets..."
   kubectl -n "$NAMESPACE" create secret generic ghcr-credentials \
     --type=kubernetes.io/dockerconfigjson \
-    --from-literal=.dockerconfigjson=$(kubectl create secret docker-registry ghcr-credentials \
+    --from-literal=.dockerconfigjson="$(kubectl create secret docker-registry ghcr-credentials \
       --docker-server=ghcr.io \
       --docker-username="$GHCR_USER" \
       --docker-password="$GHCR_TOKEN" \
       --docker-email="not-needed@ontime.lk" \
-      --dry-run=client -o jsonpath='{.data.\.dockerconfigjson}') \
+      --dry-run=client -o jsonpath='{.data.\.dockerconfigjson}')" \
     --dry-run=client -o yaml | kubectl apply -f -
 else
   echo "GHCR_TOKEN not provided, skipping pull secret creation (assuming public packages)."
