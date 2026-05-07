@@ -225,12 +225,20 @@ influxdb:
     enabled: true
     adminUser: admin
     existingSecret: "transit-platform-influxdb-auth"
-  # Fix for InfluxDB 2.x Node ID requirement
+  # Fix for InfluxDB 2.x Node ID requirement (Shotgun approach)
+  extraEnvVars:
+    - name: INFLUXDB_NODE_ID
+      value: "1"
   containerEnvVars:
     - name: INFLUXDB_NODE_ID
       value: "1"
-    - name: INFLUXDB_REPORTING_DISABLED
-      value: "true"
+  env:
+    - name: INFLUXDB_NODE_ID
+      value: "1"
+  primary:
+    extraEnvVars:
+      - name: INFLUXDB_NODE_ID
+        value: "1"
   persistence:
     # Staging-sized volume.
     size: 8Gi
