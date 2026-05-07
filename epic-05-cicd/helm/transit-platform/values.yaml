@@ -191,6 +191,15 @@ keycloak:
     adminUser: admin
     existingSecret: transit-platform-keycloak-auth
     passwordSecretKey: admin-password
+  postgresql:
+    enabled: false
+  externalDatabase:
+    host: transit-platform-postgresql
+    port: 5432
+    user: g4_app
+    database: g4_platform
+    existingSecret: transit-platform-postgresql-auth
+    existingSecretPasswordKey: password
 
 influxdb:
   # Bitnami InfluxDB values
