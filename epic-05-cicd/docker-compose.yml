@@ -33,7 +33,7 @@ services:
 
   # Kong API Gateway (minimal for testing)
   kong:
-    image: kong:3.8-alpine
+    image: kong:3.8
     container_name: kong-test
     environment:
       KONG_DATABASE: "off"
