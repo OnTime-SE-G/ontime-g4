@@ -1,4 +1,5 @@
 # Umbrella values for the transit-platform chart.
+# Deployment Trigger: 2026-05-07T11:24:00Z
 # Keep secrets out of git; use external secret managers in production.
 
 global:
