@@ -13,7 +13,7 @@ services:
 
       - name: scheduler-dispatch
         paths:
-          - /api/scheduler/dispatch
+          - /api/v1/scheduler/dispatch
         plugins:
           - name: jwt
             config:
@@ -21,7 +21,7 @@ services:
 
       - name: driver-status
         paths:
-          - /api/driver/status
+          - /api/v1/driver/status
         plugins:
           - name: jwt
             config:
