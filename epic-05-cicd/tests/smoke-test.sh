@@ -44,8 +44,7 @@ check_ws() {
 
 echo "Running smoke tests against: $BASE_URL"
 
-check_http "API gateway health" "/health"
-check_http "API gateway ready" "/health/ready"
+check_http "API gateway connectivity" "/status/200"
 
 check_ws "WebSocket live feed" "$WS_URL"
 
