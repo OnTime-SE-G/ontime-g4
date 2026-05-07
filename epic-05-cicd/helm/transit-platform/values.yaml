@@ -33,6 +33,9 @@ postgresql:
 
 kafka:
   # Bitnami Kafka values — KRaft mode (no ZooKeeper needed)
+  kraft:
+    enabled: true
+    clusterId: "WjU4M2JkZGYtNDY3ZC00OTgzLThhZTUtY"
   image:
     registry: docker.io
     repository: bitnamilegacy/kafka
