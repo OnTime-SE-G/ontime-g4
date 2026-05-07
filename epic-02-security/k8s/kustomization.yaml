@@ -16,7 +16,3 @@ resources:
   - redis/redis-deployment.yaml
   - keycloak/keycloak-deployment.yaml
   - keycloak/keycloak-secrets.yaml
-
-
-
-

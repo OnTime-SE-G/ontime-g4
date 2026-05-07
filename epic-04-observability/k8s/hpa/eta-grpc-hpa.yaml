@@ -1,33 +1,19 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: eta-grpc-service-hpa
-  namespace: transit-intelligence
+  name: eta-grpc-hpa
+  namespace: transit-platform
 spec:
-    scaleTargetRef:
+  scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: eta-grpc-service
-    minReplicas: 2
-    maxReplicas: 6
-    metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-  - type: Object
-    object:
-      metric:
-        name: grpc_p95_latency
-      describedObject:
-        apiVersion: v1
-        kind: Service
-        name: eta-grpc-service
-      target:
-        type: Value
-        value: 400ms
-  behavior:
-    scaleDown:
-      stabilizationWindowSeconds: 240
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
