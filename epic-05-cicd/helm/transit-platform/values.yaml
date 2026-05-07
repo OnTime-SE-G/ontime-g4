@@ -43,7 +43,7 @@ postgresql:
 
 
 kafka:
-  # Bitnami Kafka values — KRaft mode (no ZooKeeper needed)
+  # Bitnami Kafka values — KRaft mode (no ZooKeeper)
   kraft:
     enabled: true
     clusterId: "WjU4M2JkZGYtNDY3ZC00OTgzLThhZTUtY"
