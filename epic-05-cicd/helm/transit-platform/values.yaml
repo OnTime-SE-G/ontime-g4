@@ -229,12 +229,18 @@ influxdb:
   extraEnv:
     - name: INFLUXDB_NODE_ID
       value: "1"
+    - name: INFLUXDB_ADMIN_USER_TOKEN
+      value: "primary-token"
   envVars:
     - name: INFLUXDB_NODE_ID
       value: "1"
+    - name: INFLUXDB_ADMIN_USER_TOKEN
+      value: "primary-token"
   commonEnvVars:
     - name: INFLUXDB_NODE_ID
       value: "1"
+    - name: INFLUXDB_ADMIN_USER_TOKEN
+      value: "primary-token"
   persistence:
     # Staging-sized volume.
     size: 8Gi
@@ -499,6 +505,8 @@ g2-services:
         repository: ghcr.io/ontime-se-g/ontime-g2/stream-processing
         tag: sha-ed25d77
         pullPolicy: IfNotPresent
+      command: ["/docker-entrypoint.sh"]
+      args: ["standalone-job"]
       containerPort: 8081
       service:
         type: ClusterIP
