@@ -228,6 +228,11 @@ influxdb:
   extraEnvVars:
     - name: INFLUXDB_NODE_ID
       value: "1"
+    - name: INFLUXDB_REPORTING_DISABLED
+      value: "true"
+  env:
+    - name: INFLUXDB_NODE_ID
+      value: "1"
   persistence:
     # Staging-sized volume.
     size: 8Gi
