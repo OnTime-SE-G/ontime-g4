@@ -339,12 +339,7 @@ jobs:
           helm upgrade --install transit-platform ./epic-05-cicd/helm/transit-platform \
             -n ${{ env.K8S_NAMESPACE }} --create-namespace \
             -f ./epic-05-cicd/helm/transit-platform/values-staging.yaml \
-            --set g2-services.services.api-gateway.image.tag=sha-$SHORT_SHA \
-            --set g2-services.services.route-service.image.tag=sha-$SHORT_SHA \
-            --set g2-services.services.fleet-management-service.image.tag=sha-$SHORT_SHA \
-            --set g2-services.services.ingestion.image.tag=sha-$SHORT_SHA \
-            --set g2-services.services.websocket-service.image.tag=sha-$SHORT_SHA \
-            --set g2-services.services.anomaly-service.image.tag=sha-$SHORT_SHA \
-            --set g2-services.services.stream-processing.image.tag=sha-$SHORT_SHA \
+            --set postgresql.image.repository=ghcr.io/ontime-se-g/ontime-g4/g4-postgres \
+            --set postgresql.image.tag=${{ github.sha }} \
             --wait --timeout 10m
 

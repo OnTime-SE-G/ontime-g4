@@ -16,6 +16,8 @@ postgresql:
       size: 8Gi
   image:
     tag: 16.4.0
+    pullSecrets:
+      - ghcr-credentials
 
 kafka:
   # Bitnami Kafka values — KRaft mode (no ZooKeeper needed)
@@ -33,6 +35,8 @@ kafka:
     size: 8Gi
   image:
     tag: 3.7.1
+    pullSecrets:
+      - ghcr-credentials
 
 redis:
   # Bitnami Redis values
@@ -43,6 +47,8 @@ redis:
       size: 2Gi
   image:
     tag: 7.2.5
+    pullSecrets:
+      - ghcr-credentials
   replica:
     replicaCount: 0
 
