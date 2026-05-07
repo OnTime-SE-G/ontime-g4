@@ -339,7 +339,8 @@ jobs:
           helm upgrade --install transit-platform ./epic-05-cicd/helm/transit-platform \
             -n ${{ env.K8S_NAMESPACE }} --create-namespace \
             -f ./epic-05-cicd/helm/transit-platform/values-staging.yaml \
-            --set postgresql.image.repository=ghcr.io/ontime-se-g/ontime-g4/g4-postgres \
+            --set postgresql.image.registry=ghcr.io \
+            --set postgresql.image.repository=ontime-se-g/ontime-g4/g4-postgres \
             --set postgresql.image.tag=${{ github.sha }} \
             --wait --timeout 10m
 
