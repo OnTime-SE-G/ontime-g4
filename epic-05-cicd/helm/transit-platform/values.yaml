@@ -20,6 +20,8 @@ postgresql:
     repository: postgis/postgis
     tag: 16-3.4
     pullPolicy: Always
+  networkPolicy:
+    enabled: false
   primary:
     persistence:
       size: 8Gi
@@ -32,6 +34,8 @@ kafka:
     repository: bitnamilegacy/kafka
     tag: latest
     pullPolicy: Always
+  networkPolicy:
+    enabled: false
   auth:
     enabled: false
   listeners:
@@ -54,6 +58,8 @@ redis:
     repository: bitnamilegacy/redis
     tag: latest
     pullPolicy: Always
+  networkPolicy:
+    enabled: false
   master:
     persistence:
       size: 2Gi
@@ -169,6 +175,8 @@ keycloak:
     repository: bitnamilegacy/keycloak
     tag: latest
     pullPolicy: Always
+  networkPolicy:
+    enabled: false
   ingress:
     # Kong will route traffic; keep Keycloak ingress disabled.
     enabled: false
@@ -184,6 +192,8 @@ influxdb:
     repository: bitnamilegacy/influxdb
     tag: latest
     pullPolicy: Always
+  networkPolicy:
+    enabled: false
   auth:
     enabled: true
     adminUser: admin
@@ -209,6 +219,8 @@ prometheus:
   ingress:
     # Kong will route traffic; keep Prometheus ingress disabled.
     enabled: false
+  networkPolicy:
+    enabled: false
 
 
 grafana:
@@ -220,6 +232,8 @@ grafana:
     pullPolicy: Always
   ingress:
     # Kong will route traffic; keep Grafana ingress disabled.
+    enabled: false
+  networkPolicy:
     enabled: false
 
   admin:
