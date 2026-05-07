@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL=${BASE_URL:-http://localhost:8000}
+BASE_URL=${BASE_URL:-http://localhost:8080}
 
 require_cmd() {
 	local name=$1
@@ -15,7 +15,7 @@ require_cmd curl
 
 echo "Running security checks against: $BASE_URL"
 
-status=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/scheduler/dispatch" || true)
+status=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/v1/scheduler/dispatch" || true)
 if [[ "$status" == "401" || "$status" == "403" ]]; then
 	echo "[OK] Unauthorized scheduler dispatch is blocked ($status)."
 else

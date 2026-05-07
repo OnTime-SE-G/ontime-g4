@@ -9,12 +9,23 @@ services:
         paths:
           - /api/v1
         strip_path: false
-        methods:
-          - GET
-          - POST
-          - PUT
-          - DELETE
-          - PATCH
+        methods: [GET, POST, PUT, DELETE, PATCH]
+
+      - name: scheduler-dispatch
+        paths:
+          - /api/scheduler/dispatch
+        plugins:
+          - name: jwt
+            config:
+              key_claim_name: iss
+
+      - name: driver-status
+        paths:
+          - /api/driver/status
+        plugins:
+          - name: jwt
+            config:
+              key_claim_name: iss
 
   - name: websocket-mock
     url: http://websocket-mock:8004
@@ -23,9 +34,11 @@ services:
         paths:
           - /v1/live
         strip_path: false
-        methods:
-          - GET
+        methods: [GET]
 
 consumers:
   - username: test-user
-    custom_id: test-id-001
+    jwt_secrets:
+      - algorithm: HS256
+        key: "test-issuer"
+        secret: "test-secret"

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL=${BASE_URL:-http://localhost:8000}
-WS_URL=${WS_URL:-ws://localhost:8004/v1/live}
+BASE_URL=${BASE_URL:-http://localhost:8080}
+WS_URL=${WS_URL:-ws://localhost:8080/v1/live}
 
 PASS_COUNT=0
 
@@ -44,7 +44,7 @@ check_ws() {
 
 echo "Running smoke tests against: $BASE_URL"
 
-check_http "API gateway connectivity" "/status/200"
+check_http "API gateway connectivity" "/api/v1/status/200"
 
 check_ws "WebSocket live feed" "$WS_URL"
 
