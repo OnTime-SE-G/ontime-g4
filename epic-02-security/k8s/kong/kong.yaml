@@ -12,6 +12,7 @@ consumers:
     jwt_secrets:
       - algorithm: RS256
         key: "http://localhost:8000/auth/realms/transit-system"  # iss value
+        secret: "transit-keycloak-key"
         rsa_public_key: |
           -----BEGIN PUBLIC KEY-----
           MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtYrCE4Zi4xPgZ03r5bDV
