@@ -1,6 +1,10 @@
 # Umbrella values for the transit-platform chart.
 # Keep secrets out of git; use external secret managers in production.
 
+global:
+  security:
+    allowInsecureImages: true
+
 postgresql:
   # Bitnami PostgreSQL values
   auth:
