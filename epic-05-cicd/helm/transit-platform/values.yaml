@@ -14,6 +14,8 @@ postgresql:
     persistence:
       # Staging-sized volume.
       size: 8Gi
+  image:
+    tag: 16.4.0
 
 kafka:
   # Bitnami Kafka values — KRaft mode (no ZooKeeper needed)
@@ -29,6 +31,8 @@ kafka:
   persistence:
     # Staging-sized volume.
     size: 8Gi
+  image:
+    tag: 3.7.1
 
 redis:
   # Bitnami Redis values
@@ -37,6 +41,8 @@ redis:
   master:
     persistence:
       size: 2Gi
+  image:
+    tag: 7.2.5
   replica:
     replicaCount: 0
 
@@ -143,6 +149,8 @@ kong:
 
 keycloak:
   # Bitnami Keycloak values
+  image:
+    tag: 25.0.1
   ingress:
     # Kong will route traffic; keep Keycloak ingress disabled.
     enabled: false
@@ -153,6 +161,8 @@ keycloak:
 
 influxdb:
   # Bitnami InfluxDB values
+  image:
+    tag: 2.7.6
   auth:
     enabled: true
     adminUser: admin
@@ -166,12 +176,16 @@ prometheus:
   ingress:
     # Kong will route traffic; keep Prometheus ingress disabled.
     enabled: false
+  image:
+    tag: v2.53.0
 
 grafana:
   # Bitnami Grafana values
   ingress:
     # Kong will route traffic; keep Grafana ingress disabled.
     enabled: false
+  image:
+    tag: 11.0.0
   admin:
     user: admin
     existingSecret: transit-platform-grafana-admin
