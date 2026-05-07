@@ -5,6 +5,10 @@
 global:
   security:
     allowInsecureImages: true
+  postgresql:
+    auth:
+      postgresPassword: "postgres-password-placeholder"
+      password: "user-password-placeholder"
 
 postgresql:
   # Bitnami PostgreSQL values
