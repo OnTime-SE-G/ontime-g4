@@ -89,7 +89,7 @@ kong:
   # Kong ingress controller/gateway values (dbless mode with declarative config)
   database: "off"
   ingressController:
-    enabled: true
+    enabled: false
   proxy:
     type: LoadBalancer
   # Declarative config: routes to G2 microservices and platform services
@@ -107,7 +107,11 @@ kong:
       readOnly: true
   # Environment for dbless mode
   env:
-    KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yaml
+    DECLARATIVE_CONFIG: /etc/kong/kong.yaml
+    PROXY_ACCESS_LOG: /dev/stdout
+    ADMIN_ACCESS_LOG: /dev/stdout
+    PROXY_ERROR_LOG: /dev/stderr
+    ADMIN_ERROR_LOG: /dev/stderr
     KONG_PROXY_ACCESS_LOG: /dev/stdout
     KONG_ADMIN_ACCESS_LOG: /dev/stdout
     KONG_PROXY_ERROR_LOG: /dev/stderr
@@ -164,7 +168,7 @@ kong:
 
         - name: grafana
           host: transit-platform-grafana
-          port: 80
+          port: 3000
           protocol: http
           routes:
             - name: grafana-dashboard
@@ -218,6 +222,12 @@ keycloak:
       value: "edge"
     - name: KC_HOSTNAME_STRICT
       value: "false"
+  readinessProbe:
+    httpGet:
+      path: /auth/realms/master
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
 
 influxdb:
   # Bitnami InfluxDB values
@@ -285,6 +295,12 @@ grafana:
     enabled: false
   networkPolicy:
     enabled: false
+
+  extraEnvVars:
+    - name: GF_SERVER_ROOT_URL
+      value: "%(protocol)s://%(domain)s/grafana/"
+    - name: GF_SERVER_SERVE_FROM_SUB_PATH
+      value: "true"
 
   admin:
     user: admin
@@ -513,7 +529,7 @@ g2-services:
         tag: sha-ed25d77
         pullPolicy: IfNotPresent
       command: ["/docker-entrypoint.sh"]
-      args: ["standalone-job"]
+      args: ["jobmanager"]
       containerPort: 8081
       service:
         type: ClusterIP
