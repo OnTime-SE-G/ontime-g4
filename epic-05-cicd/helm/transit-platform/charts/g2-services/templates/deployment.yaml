@@ -39,6 +39,14 @@ spec:
         - name: "{{ $name }}"
           image: "{{ $svc.image.repository }}:{{ $svc.image.tag }}"
           imagePullPolicy: "{{ $svc.image.pullPolicy }}"
+          {{- if $svc.command }}
+          command:
+            {{- toYaml $svc.command | nindent 12 }}
+          {{- end }}
+          {{- if $svc.args }}
+          args:
+            {{- toYaml $svc.args | nindent 12 }}
+          {{- end }}
           ports:
             - name: http
               containerPort: {{ $svc.containerPort }}
