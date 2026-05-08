@@ -160,8 +160,8 @@ kong:
           routes:
             - name: keycloak-auth
               paths:
-                - /auth
-                - /auth/*
+                - ~/auth(?:/.*)?$
+              strip_path: true
               methods:
                 - GET
                 - POST
@@ -175,7 +175,7 @@ kong:
               paths:
                 - /grafana
                 - /grafana/*
-              strip_path: true
+              strip_path: false
 
         - name: health-service
           host: transit-platform-g2-api-gateway
@@ -216,15 +216,19 @@ keycloak:
     existingSecret: "transit-platform-postgresql-auth"
     existingSecretPasswordKey: "password"
   extraEnvVars:
+    - name: KC_HOSTNAME
+      value: "http://209.38.56.155/auth"
     - name: KC_HTTP_RELATIVE_PATH
       value: "/auth"
     - name: KC_PROXY
       value: "edge"
+    - name: KC_PROXY_HEADERS
+      value: "xforwarded"
     - name: KC_HOSTNAME_STRICT
       value: "false"
   readinessProbe:
     httpGet:
-      path: /auth/realms/master
+      path: /realms/master
       port: http
     initialDelaySeconds: 30
     periodSeconds: 10
