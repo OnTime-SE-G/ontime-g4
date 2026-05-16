@@ -13,6 +13,16 @@ set -euo pipefail
 # - GRAFANA_ADMIN_PASSWORD
 # - FLYWAY_PASSWORD
 # - G2_INFLUXDB_TOKEN
+# - HIVEMQ_USERNAME
+# - HIVEMQ_PASSWORD
+# - POSTGRES_EXPORTER_DSN
+#
+# Optional (frontend secrets — if deploying frontends):
+# - ADMIN_WEB_AUTH_SECRET
+# - ADMIN_WEB_KEYCLOAK_CLIENT_SECRET
+# - DRIVER_WEB_AUTH_SECRET
+# - DRIVER_WEB_KEYCLOAK_CLIENT_SECRET
+# - PASSENGER_WEB_MAPBOX_TOKEN
 #
 # Optional environment overrides:
 # - GHCR_TOKEN (only needed if packages are private)
@@ -45,8 +55,13 @@ require_env INFLUXDB_ADMIN_TOKEN
 require_env GRAFANA_ADMIN_PASSWORD
 require_env FLYWAY_PASSWORD
 require_env G2_INFLUXDB_TOKEN
+require_env HIVEMQ_USERNAME
+require_env HIVEMQ_PASSWORD
+require_env POSTGRES_EXPORTER_DSN
 
 DATABASE_URL="postgresql://${POSTGRES_APP_USER}:${POSTGRES_APP_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
+
+# ── Infrastructure secrets ──────────────────────────────
 
 kubectl -n "$NAMESPACE" create secret generic transit-platform-postgresql-auth \
   --from-literal=postgres-password="$POSTGRES_ADMIN_PASSWORD" \
@@ -72,6 +87,8 @@ kubectl -n "$NAMESPACE" create secret generic transit-platform-flyway \
   --from-literal=FLYWAY_PASSWORD="$FLYWAY_PASSWORD" \
   --dry-run=client -o yaml | kubectl apply -f -
 
+# ── G2 service secrets ──────────────────────────────────
+
 kubectl -n "$NAMESPACE" create secret generic g2-api-gateway-secret \
   --from-literal=DATABASE_URL="$DATABASE_URL" \
   --dry-run=client -o yaml | kubectl apply -f -
@@ -87,6 +104,47 @@ kubectl -n "$NAMESPACE" create secret generic g2-fleet-management-secret \
 kubectl -n "$NAMESPACE" create secret generic g2-stream-processing-secret \
   --from-literal=INFLUXDB_TOKEN="$G2_INFLUXDB_TOKEN" \
   --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl -n "$NAMESPACE" create secret generic g2-eta-service-secret \
+  --from-literal=ETA_DATABASE_URL="$DATABASE_URL" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# ── HiveMQ MQTT auth ────────────────────────────────────
+
+kubectl -n "$NAMESPACE" create secret generic hivemq-auth \
+  --from-literal=username="$HIVEMQ_USERNAME" \
+  --from-literal=password="$HIVEMQ_PASSWORD" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# ── Monitoring secrets ───────────────────────────────────
+
+kubectl -n "$NAMESPACE" create secret generic postgres-exporter-dsn \
+  --from-literal=dsn="$POSTGRES_EXPORTER_DSN" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# ── Frontend secrets (optional) ─────────────────────────
+
+if [[ -n "${ADMIN_WEB_AUTH_SECRET:-}" ]]; then
+  kubectl -n "$NAMESPACE" create secret generic admin-web-secrets \
+    --from-literal=AUTH_SECRET="$ADMIN_WEB_AUTH_SECRET" \
+    --from-literal=KEYCLOAK_CLIENT_SECRET="${ADMIN_WEB_KEYCLOAK_CLIENT_SECRET:-}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+fi
+
+if [[ -n "${DRIVER_WEB_AUTH_SECRET:-}" ]]; then
+  kubectl -n "$NAMESPACE" create secret generic driver-web-secrets \
+    --from-literal=AUTH_SECRET="$DRIVER_WEB_AUTH_SECRET" \
+    --from-literal=KEYCLOAK_CLIENT_SECRET="${DRIVER_WEB_KEYCLOAK_CLIENT_SECRET:-}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+fi
+
+if [[ -n "${PASSENGER_WEB_MAPBOX_TOKEN:-}" ]]; then
+  kubectl -n "$NAMESPACE" create secret generic passenger-web-secrets \
+    --from-literal=mapbox-token="$PASSENGER_WEB_MAPBOX_TOKEN" \
+    --dry-run=client -o yaml | kubectl apply -f -
+fi
+
+# ── GHCR pull secret ────────────────────────────────────
 
 if [[ -n "${GHCR_TOKEN:-}" && -n "${GHCR_USER:-}" ]]; then
   echo "Applying GHCR pull secrets..."

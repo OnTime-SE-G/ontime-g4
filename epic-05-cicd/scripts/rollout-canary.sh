@@ -36,6 +36,7 @@ set_image_tag_args() {
 	echo "--set g2-services.services.websocket-service.image.tag=${G2_IMAGE_TAG}"
 	echo "--set g2-services.services.anomaly-service.image.tag=${G2_IMAGE_TAG}"
 	echo "--set g2-services.services.stream-processing.image.tag=${G2_IMAGE_TAG}"
+	echo "--set g2-services.services.eta-service.image.tag=${G2_IMAGE_TAG}"
 }
 
 rollout_status() {
@@ -74,6 +75,7 @@ if [[ "$MODE" == "canary" ]]; then
 		--set g2-services.services.websocket-service.replicaCount="$CANARY_REPLICAS" \
 		--set g2-services.services.anomaly-service.replicaCount="$CANARY_REPLICAS" \
 		--set g2-services.services.stream-processing.replicaCount="$CANARY_REPLICAS" \
+		--set g2-services.services.eta-service.replicaCount="$CANARY_REPLICAS" \
 		"${image_args[@]}" \
 		--wait --timeout "$TIMEOUT"
 

@@ -17,6 +17,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: "{{ $fullName }}"
       app.kubernetes.io/instance: "{{ $.Release.Name }}"
+  {{- if $svc.strategy }}
+  strategy:
+    {{- toYaml $svc.strategy | nindent 4 }}
+  {{- end }}
   template:
     metadata:
       labels:
@@ -59,8 +63,15 @@ spec:
           resources:
             {{- toYaml $svc.resources | nindent 12 }}
           {{- end }}
-          {{- if or $svc.env $svc.secrets $svc.secretKeys }}
+          {{- if or $svc.env $svc.secrets $svc.secretKeys $svc.envFieldRef $svc.externalSecretRefs }}
           env:
+            {{- range $envField := $svc.envFieldRef }}
+            - name: "{{ $envField.name }}"
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: "{{ $envField.fieldPath }}"
+            {{- end }}
             {{- range $key, $value := $svc.env }}
             - name: "{{ $key }}"
               value: {{ $value | quote }}
@@ -78,6 +89,13 @@ spec:
                 secretKeyRef:
                   name: "{{ $secretName }}"
                   key: "{{ $key }}"
+            {{- end }}
+            {{- range $ref := $svc.externalSecretRefs }}
+            - name: "{{ $ref.name }}"
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ $ref.secretName }}"
+                  key: "{{ $ref.key }}"
             {{- end }}
           {{- end }}
           {{- if $svc.envFrom }}
@@ -104,5 +122,13 @@ spec:
           startupProbe:
             {{- toYaml $svc.startupProbe | nindent 12 }}
           {{- end }}
+          {{- if $svc.volumeMounts }}
+          volumeMounts:
+            {{- toYaml $svc.volumeMounts | nindent 12 }}
+          {{- end }}
+      {{- if $svc.volumes }}
+      volumes:
+        {{- toYaml $svc.volumes | nindent 8 }}
+      {{- end }}
 ---
 {{- end }}

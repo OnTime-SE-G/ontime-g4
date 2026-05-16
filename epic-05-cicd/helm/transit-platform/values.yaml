@@ -83,7 +83,7 @@ redis:
       size: 2Gi
 
   replica:
-    replicaCount: 0
+    replicaCount: 1
 
 kong:
   # Kong ingress controller/gateway values (dbless mode with declarative config)
@@ -123,16 +123,110 @@ kong:
       _format_version: "3.0"
       _transform: true
 
+      plugins:
+        - name: prometheus
+          config:
+            status_code_metrics: true
+            latency_metrics: true
+            bandwidth_metrics: true
+            upstream_health_metrics: true
+
       services:
         - name: api-gateway
-          host: transit-platform-g2-api-gateway
+          host: transit-platform-g2-api-gateway.transit-platform.svc.cluster.local
           port: 8000
           protocol: http
           routes:
             - name: api-v1-routes
               paths:
                 - /api/v1
-                - /api/v1/*
+              strip_path: false
+              methods:
+                - GET
+                - POST
+                - PUT
+                - DELETE
+                - PATCH
+                - OPTIONS
+            - name: health-route
+              paths:
+                - /health
+              strip_path: false
+              methods:
+                - GET
+
+        - name: websocket-service
+          host: transit-platform-g2-websocket-service.transit-platform.svc.cluster.local
+          port: 8004
+          protocol: http
+          routes:
+            - name: websocket-live
+              paths:
+                - /v1/live
+              strip_path: false
+              protocols:
+                - http
+                - https
+
+        - name: keycloak
+          host: transit-platform-keycloak.transit-platform.svc.cluster.local
+          port: 80
+          protocol: http
+          routes:
+            - name: keycloak-auth
+              hosts:
+                - on-time.live
+                - api.on-time.live
+              paths:
+                - /auth
+              strip_path: true
+              methods:
+                - GET
+                - POST
+                - PUT
+                - DELETE
+                - PATCH
+                - OPTIONS
+                - HEAD
+
+        - name: grafana
+          host: transit-platform-grafana.transit-platform.svc.cluster.local
+          port: 3000
+          protocol: http
+          routes:
+            - name: grafana-dashboard
+              hosts:
+                - grafana.on-time.live
+              paths:
+                - /
+              strip_path: false
+
+        - name: passenger-web
+          host: passenger-web.transit-platform.svc.cluster.local
+          port: 3000
+          protocol: http
+          routes:
+            - name: passenger-web-route
+              hosts:
+                - on-time.live
+                - www.on-time.live
+              paths:
+                - /
+              strip_path: false
+              methods:
+                - GET
+
+        - name: admin-web
+          host: admin-web.transit-platform.svc.cluster.local
+          port: 3000
+          protocol: http
+          routes:
+            - name: admin-web-route
+              hosts:
+                - admin.on-time.live
+              paths:
+                - /
+              strip_path: false
               methods:
                 - GET
                 - POST
@@ -141,54 +235,24 @@ kong:
                 - PATCH
                 - OPTIONS
 
-        - name: websocket-service
-          host: transit-platform-g2-websocket-service
-          port: 8004
-          protocol: http
-          routes:
-            - name: websocket-live
-              paths:
-                - /v1/live
-              methods:
-                - GET
-                - POST
-
-        - name: keycloak
-          host: transit-platform-keycloak
-          port: 80
-          protocol: http
-          routes:
-            - name: keycloak-auth
-              paths:
-                - ~/auth(?:/.*)?$
-              strip_path: true
-              methods:
-                - GET
-                - POST
-
-        - name: grafana
-          host: transit-platform-grafana
+        - name: driver-web
+          host: driver-web.transit-platform.svc.cluster.local
           port: 3000
           protocol: http
           routes:
-            - name: grafana-dashboard
+            - name: driver-web-route
+              hosts:
+                - driver.on-time.live
               paths:
-                - /grafana
-                - /grafana/*
+                - /
               strip_path: false
-
-        - name: health-service
-          host: transit-platform-g2-api-gateway
-          port: 8000
-          protocol: http
-          routes:
-            - name: health
-              paths:
-                - /health
               methods:
                 - GET
-
-      consumers: []
+                - POST
+                - PUT
+                - DELETE
+                - PATCH
+                - OPTIONS
 
 keycloak:
   # Bitnami Keycloak values
@@ -217,15 +281,21 @@ keycloak:
     existingSecretPasswordKey: "password"
   extraEnvVars:
     - name: KC_HOSTNAME
-      value: "http://209.38.56.155/auth"
+      value: "https://on-time.live/auth"
     - name: KC_HTTP_RELATIVE_PATH
-      value: "/auth"
+      value: "/"
     - name: KC_PROXY
       value: "edge"
     - name: KC_PROXY_HEADERS
       value: "xforwarded"
     - name: KC_HOSTNAME_STRICT
       value: "false"
+    - name: KC_HOSTNAME_STRICT_HTTPS
+      value: "false"
+    - name: KC_METRICS_ENABLED
+      value: "true"
+    - name: KC_HEALTH_ENABLED
+      value: "true"
   readinessProbe:
     httpGet:
       path: /realms/master
@@ -274,6 +344,10 @@ prometheus:
       repository: bitnamilegacy/prometheus
       tag: latest
       pullPolicy: Always
+    service:
+      type: LoadBalancer
+      annotations:
+        service.beta.kubernetes.io/do-loadbalancer-type: REGIONAL_NETWORK
   alertmanager:
     image:
       registry: docker.io
@@ -302,9 +376,17 @@ grafana:
 
   extraEnvVars:
     - name: GF_SERVER_ROOT_URL
-      value: "%(protocol)s://%(domain)s/grafana/"
+      value: "https://grafana.on-time.live"
     - name: GF_SERVER_SERVE_FROM_SUB_PATH
+      value: "false"
+    - name: GF_SERVER_DOMAIN
+      value: "grafana.on-time.live"
+    - name: GF_SECURITY_COOKIE_SECURE
       value: "true"
+    - name: GF_SECURITY_COOKIE_SAMESITE
+      value: "none"
+    - name: GF_SECURITY_CSRF_TRUSTED_ORIGINS
+      value: "grafana.on-time.live"
 
   admin:
     user: admin
@@ -340,8 +422,9 @@ g2-services:
     api-gateway:
       image:
         repository: ghcr.io/ontime-se-g/ontime-g2/api-gateway
-        tag: sha-ed25d77
+        tag: sha-ec236b2
         pullPolicy: IfNotPresent
+      replicaCount: 2
       containerPort: 8000
       service:
         type: ClusterIP
@@ -362,15 +445,36 @@ g2-services:
         REDIS_URL: "redis://transit-platform-redis-master:6379/0"
         ROUTE_SERVICE_URL: "http://transit-platform-g2-route-service:8002"
         FLEET_SERVICE_URL: "http://transit-platform-g2-fleet-management-service:8003"
+        POSTGRES_HOST: "transit-platform-postgresql"
+        POSTGRES_PORT: "5432"
+        REDIS_HOST: "transit-platform-redis-master"
+        REDIS_PORT: "6379"
+        KAFKA_HOST: "transit-platform-kafka"
+        KAFKA_PORT: "9092"
+        INFLUXDB_HOST: "transit-platform-influxdb"
+        INFLUXDB_PORT: "8086"
+        KEYCLOAK_BASE_URL: "http://transit-platform-keycloak.transit-platform.svc.cluster.local"
+        KEYCLOAK_REALM: "ontime"
+        KEYCLOAK_ADMIN_USERNAME: "admin"
+        KEYCLOAK_ADMIN_PASSWORD: "keycloak-admin-password"
       secretName: g2-api-gateway-secret
       secretKeys:
         - DATABASE_URL
+      volumeMounts:
+        - name: buses-override
+          mountPath: /app/app/routers/buses.py
+          subPath: buses.py
+      volumes:
+        - name: buses-override
+          configMap:
+            name: api-gateway-buses-override
 
     route-service:
       image:
         repository: ghcr.io/ontime-se-g/ontime-g2/route-service
-        tag: sha-ed25d77
+        tag: sha-ec236b2
         pullPolicy: IfNotPresent
+      replicaCount: 2
       containerPort: 8002
       service:
         type: ClusterIP
@@ -395,8 +499,9 @@ g2-services:
     fleet-management-service:
       image:
         repository: ghcr.io/ontime-se-g/ontime-g2/fleet-management-service
-        tag: sha-ed25d77
+        tag: sha-a976407-4
         pullPolicy: IfNotPresent
+      replicaCount: 2
       containerPort: 8003
       service:
         type: ClusterIP
@@ -424,9 +529,11 @@ g2-services:
     ingestion:
       image:
         repository: ghcr.io/ontime-se-g/ontime-g2/ingestion
-        tag: sha-ed25d77
+        tag: sha-ec236b2
         pullPolicy: IfNotPresent
+      replicaCount: 2
       containerPort: 8001
+      serviceAccountName: g2-ingestion-sa
       service:
         type: ClusterIP
         port: 8001
@@ -438,17 +545,20 @@ g2-services:
         periodSeconds: 30
       readinessProbe:
         httpGet:
-          path: /health/ready
+          path: /health/live
           port: http
         initialDelaySeconds: 15
         periodSeconds: 10
+      envFieldRef:
+        - name: POD_NAME
+          fieldPath: metadata.name
       env:
-        MQTT_BROKER_HOST: "transit-platform-mosquitto"
-        MQTT_BROKER_PORT: "1883"
+        MQTT_BROKER_HOST: "94f82b369e4a40e3a5f0725c0850c6f4.s1.eu.hivemq.cloud"
+        MQTT_BROKER_PORT: "8883"
         MQTT_TOPIC_PATTERN: "transport/bus/+/location"
         MQTT_HEARTBEAT_TOPIC_PATTERN: "transport/bus/+/heartbeat"
-        MQTT_TLS_ENABLED: "false"
-        MQTT_CLIENT_ID: "ontime-ingestion-service"
+        MQTT_TLS_ENABLED: "true"
+        MQTT_CLIENT_ID: "ontime-ingestion-$(POD_NAME)"
         KAFKA_BROKER_URL: "transit-platform-kafka:9092"
         INGESTION_KAFKA_RAW_TOPIC: "transport-telemetry-raw"
         INGESTION_KAFKA_DLQ_TOPIC: "transport-telemetry-dlq"
@@ -463,13 +573,20 @@ g2-services:
         INGESTION_MAX_FUTURE_SKEW_SECONDS: "30.0"
         INGESTION_MAX_STALE_AGE_SECONDS: "86400.0"
         INGESTION_DUPLICATE_CACHE_SIZE: "100"
-      secrets: {}
+      externalSecretRefs:
+        - name: MQTT_USERNAME
+          secretName: hivemq-auth
+          key: username
+        - name: MQTT_PASSWORD
+          secretName: hivemq-auth
+          key: password
 
     websocket-service:
       image:
         repository: ghcr.io/ontime-se-g/ontime-g2/websocket-service
-        tag: sha-ed25d77
+        tag: sha-a976407-3
         pullPolicy: IfNotPresent
+      replicaCount: 2
       containerPort: 8004
       service:
         type: ClusterIP
@@ -490,12 +607,19 @@ g2-services:
         REDIS_URL: "redis://transit-platform-redis-master:6379"
         FLEET_CHANNEL: "fleet:live"
         ETA_CHANNEL: "eta:live"
-      secrets: {}
+      volumeMounts:
+        - name: ws-main-override
+          mountPath: /app/main.py
+          subPath: main.py
+      volumes:
+        - name: ws-main-override
+          configMap:
+            name: ws-service-main-override
 
     anomaly-service:
       image:
         repository: ghcr.io/ontime-se-g/ontime-g2/anomaly-service
-        tag: sha-ed25d77
+        tag: sha-a976407-2
         pullPolicy: IfNotPresent
       containerPort: 8006
       service:
@@ -525,12 +649,11 @@ g2-services:
         INACTIVE_TRIP_DLQ_THRESHOLD_COUNT: "3"
         INACTIVE_TRIP_DLQ_WINDOW_SECONDS: "60"
         INACTIVE_TRIP_DLQ_COOLDOWN_SECONDS: "300"
-      secrets: {}
 
     stream-processing:
       image:
         repository: ghcr.io/ontime-se-g/ontime-g2/stream-processing
-        tag: sha-ed25d77
+        tag: sha-ec236b2
         pullPolicy: IfNotPresent
       command: ["/docker-entrypoint.sh"]
       args: ["jobmanager"]
@@ -559,6 +682,300 @@ g2-services:
         INFLUXDB_ORG: "ontime"
         INFLUXDB_BUCKET: "telemetry"
         ROUTE_SERVICE_URL: "http://transit-platform-g2-route-service:8002"
+        PYTHONPATH: "/opt/flink/usrlib"
       secretName: g2-stream-processing-secret
       secretKeys:
         - INFLUXDB_TOKEN
+
+    eta-service:
+      image:
+        repository: ghcr.io/ontime-se-g/ontime-g2/eta-service
+        tag: sha-ec236b2
+        pullPolicy: Always
+      containerPort: 8005
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 1
+          maxUnavailable: 0
+      service:
+        type: ClusterIP
+        port: 8005
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: http
+        initialDelaySeconds: 30
+        periodSeconds: 30
+        timeoutSeconds: 5
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: http
+        initialDelaySeconds: 20
+        periodSeconds: 10
+        timeoutSeconds: 5
+      env:
+        KAFKA_BROKER_URL: "transit-platform-kafka:9092"
+        REDIS_HOST: "transit-platform-redis-master"
+        REDIS_PORT: "6379"
+        ETA_LIVE_CHANNEL: "eta:live"
+      secretName: g2-eta-service-secret
+      secretKeys:
+        - ETA_DATABASE_URL
+      volumeMounts:
+        - name: consumer-fix
+          mountPath: /app/consumer.py
+          subPath: consumer.py
+        - name: consumer-fix
+          mountPath: /app/models/ml_eta_xgb.py
+          subPath: ml_eta_xgb.py
+        - name: xgb-model
+          mountPath: /app/models/training/eta_model_xgb.joblib
+          subPath: eta_model_xgb.joblib
+      volumes:
+        - name: consumer-fix
+          configMap:
+            name: eta-consumer-fix
+        - name: xgb-model
+          configMap:
+            name: eta-xgb-model
+
+# ─────────────────────────────────────────────────────────
+# Frontend Web Apps
+# ─────────────────────────────────────────────────────────
+frontends:
+  enabled: true
+  imagePullSecrets:
+    - name: ghcr-credentials
+  apps:
+    admin-web:
+      image: "ghcr.io/ontime-se-g/ontime-frontend/ontime-admin-web:d7a7948d9fcd3f7587ec911f9a2fc58059d1353b"
+      replicas: 2
+      containerPort: 3000
+      env:
+        - name: NEXT_PUBLIC_API_URL
+          value: "http://209.38.56.155"
+      envFromSecret: admin-web-secrets
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    driver-web:
+      image: "ghcr.io/ontime-se-g/ontime-frontend/ontime-driver-web:2609f0d6199c6639ebeeb111b76d9dc4603c31b0"
+      replicas: 2
+      containerPort: 3000
+      env:
+        - name: NEXT_PUBLIC_API_URL
+          value: "https://api.on-time.live"
+        - name: NEXTAUTH_URL
+          value: "https://driver.on-time.live"
+      envFromSecret: driver-web-secrets
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    passenger-web:
+      image: "ghcr.io/ontime-se-g/ontime-frontend/ontime-passenger-web:8458a705737341b2bec9e3425c3cc2639f12aff9"
+      replicas: 2
+      containerPort: 3000
+      env:
+        - name: NEXT_PUBLIC_SOCKET_URL
+          value: "ws://209.38.56.155/v1/live"
+        - name: NEXT_PUBLIC_USE_MOCK_SOCKET
+          value: "false"
+        - name: NEXT_PUBLIC_MAPBOX_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: mapbox-token
+              name: passenger-web-secrets
+      volumeMounts:
+        - name: tracking-js-override
+          mountPath: /app/.next/static/chunks/app/tracking/page-ec9b8dfbc6e3c3db.js
+          subPath: page-ec9b8dfbc6e3c3db.js
+        - name: patched-js
+          mountPath: /app/.next/static/chunks/app/tracking/page-patched002.js
+          subPath: page-patched002.js
+        - name: tracking-manifests
+          mountPath: /app/.next/app-build-manifest.json
+          subPath: app-build-manifest.json
+        - name: tracking-manifests
+          mountPath: /app/.next/server/app/tracking.html
+          subPath: tracking.html
+        - name: tracking-manifests
+          mountPath: /app/.next/server/app/tracking.rsc
+          subPath: tracking.rsc
+        - name: tracking-manifests
+          mountPath: /app/.next/server/app/tracking/page_client-reference-manifest.js
+          subPath: page_client-reference-manifest.js
+      volumes:
+        - name: tracking-js-override
+          configMap:
+            name: passenger-web-tracking-js
+        - name: patched-js
+          configMap:
+            name: passenger-web-patched-js
+        - name: tracking-manifests
+          configMap:
+            name: passenger-web-tracking-manifests
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+# ─────────────────────────────────────────────────────────
+# HiveMQ CE Broker
+# ─────────────────────────────────────────────────────────
+hivemq:
+  enabled: true
+  image: "hivemq/hivemq-ce:latest"
+  replicas: 1
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/do-loadbalancer-type: REGIONAL_NETWORK
+    ports:
+      - name: mqtt
+        port: 1883
+        targetPort: 1883
+      - name: mqtts
+        port: 8883
+        targetPort: 8883
+  metricsService:
+    enabled: true
+    port: 9399
+  extensions:
+    prometheus:
+      url: "https://github.com/hivemq/hivemq-prometheus-extension/releases/download/4.1.1/hivemq-prometheus-extension-4.1.1.zip"
+    rbac:
+      url: "https://github.com/hivemq/hivemq-file-rbac-extension/releases/download/4.6.13/hivemq-file-rbac-extension-4.6.13.zip"
+  secrets:
+    rbacCredentials: hivemq-rbac-credentials
+    tlsSecret: hivemq-tls-secret
+  configMap: hivemq-config
+
+# ─────────────────────────────────────────────────────────
+# Monitoring Exporters
+# ─────────────────────────────────────────────────────────
+monitoring:
+  enabled: true
+
+  nodeExporter:
+    enabled: true
+    image: "prom/node-exporter:v1.8.1"
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+
+  kubeStateMetrics:
+    enabled: true
+    image: "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.12.0"
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+  kafkaExporter:
+    enabled: true
+    image: "danielqsj/kafka-exporter:v1.7.0"
+    kafkaServer: "transit-platform-kafka:9092"
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+
+  postgresExporter:
+    enabled: true
+    image: "prometheuscommunity/postgres-exporter:v0.15.0"
+    secretName: postgres-exporter-dsn
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+
+  redisExporter:
+    enabled: true
+    image: "oliver006/redis_exporter:v1.62.0"
+    redisAddr: "redis://transit-platform-redis-master:6379"
+    resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+
+  kongMetrics:
+    enabled: true
+    port: 8100
+
+# ─────────────────────────────────────────────────────────
+# RBAC & Service Accounts
+# ─────────────────────────────────────────────────────────
+rbac:
+  serviceAccounts:
+    - name: github-actions
+    - name: g2-ingestion-sa
+    - name: kube-state-metrics
+    - name: node-exporter
+  roles:
+    - name: frontend-deployer
+      rules:
+        - apiGroups: ["apps"]
+          resources: ["deployments"]
+          resourceNames: ["passenger-web", "admin-web", "driver-web"]
+          verbs: ["get", "patch", "update"]
+  roleBindings:
+    - name: github-actions-frontend-deployer
+      roleRef: frontend-deployer
+      subjects:
+        - kind: ServiceAccount
+          name: github-actions
+
+# ─────────────────────────────────────────────────────────
+# Network Policies
+# ─────────────────────────────────────────────────────────
+networkPolicies:
+  allowIngestionToHivemq:
+    enabled: true
+    podSelector:
+      matchLabels:
+        app: hivemq
+    ingress:
+      - from:
+          - podSelector:
+              matchLabels:
+                app.kubernetes.io/name: transit-platform-g2-ingestion
+        ports:
+          - port: 1883
+            protocol: TCP
+
+# ─────────────────────────────────────────────────────────
+# Grafana Datasources ConfigMap
+# ─────────────────────────────────────────────────────────
+grafanaDatasources:
+  enabled: true
+  prometheus:
+    url: "http://transit-platform-prometheus-server.transit-platform.svc.cluster.local"

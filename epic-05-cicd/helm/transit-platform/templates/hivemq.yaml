@@ -1,0 +1,111 @@
+# yamllint disable rule:braces
+# yamllint disable rule:syntax
+{{- if .Values.hivemq.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hivemq
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: hivemq
+spec:
+  replicas: {{ .Values.hivemq.replicas }}
+  selector:
+    matchLabels:
+      app: hivemq
+  template:
+    metadata:
+      labels:
+        app: hivemq
+    spec:
+      initContainers:
+        - name: install-prometheus-extension
+          image: alpine:latest
+          command: ["sh", "-c"]
+          args:
+            - >-
+              apk add --no-cache curl unzip -q &&
+              curl -sL -o /tmp/prom.zip {{ .Values.hivemq.extensions.prometheus.url }} &&
+              unzip /tmp/prom.zip -d /extensions-vol/ &&
+              echo Prometheus OK
+          volumeMounts:
+            - name: hivemq-extensions
+              mountPath: /extensions-vol
+        - name: install-rbac-extension
+          image: alpine:latest
+          command: ["sh", "-c"]
+          args:
+            - >-
+              apk add --no-cache curl unzip -q &&
+              curl -sL -o /tmp/rbac.zip {{ .Values.hivemq.extensions.rbac.url }} &&
+              unzip /tmp/rbac.zip -d /extensions-vol/ &&
+              echo RBAC OK
+          volumeMounts:
+            - name: hivemq-extensions
+              mountPath: /extensions-vol
+      containers:
+        - name: hivemq-ce
+          image: "{{ .Values.hivemq.image }}"
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: hivemq-extensions
+              mountPath: /opt/hivemq/extensions
+            - name: hivemq-rbac-credentials
+              mountPath: /opt/hivemq/extensions/hivemq-file-rbac-extension/conf/credentials.xml
+              subPath: credentials.xml
+            - name: hivemq-config
+              mountPath: /opt/hivemq/conf/config.xml
+              subPath: config.xml
+            - name: hivemq-tls
+              mountPath: /opt/hivemq/certs
+              readOnly: true
+      volumes:
+        - name: hivemq-extensions
+          emptyDir: {}
+        - name: hivemq-rbac-credentials
+          secret:
+            secretName: "{{ .Values.hivemq.secrets.rbacCredentials }}"
+        - name: hivemq-config
+          configMap:
+            name: "{{ .Values.hivemq.configMap }}"
+        - name: hivemq-tls
+          secret:
+            secretName: "{{ .Values.hivemq.secrets.tlsSecret }}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hivemq-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: hivemq
+  {{- if .Values.hivemq.service.annotations }}
+  annotations:
+    {{- toYaml .Values.hivemq.service.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.hivemq.service.type }}
+  ports:
+    {{- toYaml .Values.hivemq.service.ports | nindent 4 }}
+  selector:
+    app: hivemq
+---
+{{- if .Values.hivemq.metricsService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: hivemq-metrics
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: hivemq
+spec:
+  type: ClusterIP
+  ports:
+    - name: metrics
+      port: {{ .Values.hivemq.metricsService.port }}
+      targetPort: {{ .Values.hivemq.metricsService.port }}
+      protocol: TCP
+  selector:
+    app: hivemq
+{{- end }}
+{{- end }}

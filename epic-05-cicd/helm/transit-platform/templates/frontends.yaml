@@ -1,0 +1,77 @@
+# yamllint disable rule:braces
+# yamllint disable rule:syntax
+{{- if .Values.frontends.enabled }}
+{{- range $name, $app := .Values.frontends.apps }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ $name }}"
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app: "{{ $name }}"
+spec:
+  replicas: {{ $app.replicas }}
+  selector:
+    matchLabels:
+      app: "{{ $name }}"
+  template:
+    metadata:
+      labels:
+        app: "{{ $name }}"
+    spec:
+      containers:
+        - name: "{{ $name }}"
+          image: "{{ $app.image }}"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: {{ $app.containerPort }}
+          env:
+            {{- toYaml $app.env | nindent 12 }}
+          {{- if $app.envFromSecret }}
+          envFrom:
+            - secretRef:
+                name: "{{ $app.envFromSecret }}"
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ $app.containerPort }}
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ $app.containerPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          {{- if $app.resources }}
+          resources:
+            {{- toYaml $app.resources | nindent 12 }}
+          {{- end }}
+          {{- if $app.volumeMounts }}
+          volumeMounts:
+            {{- toYaml $app.volumeMounts | nindent 12 }}
+          {{- end }}
+      {{- if $app.volumes }}
+      volumes:
+        {{- toYaml $app.volumes | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ $name }}"
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app: "{{ $name }}"
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ $app.containerPort }}
+      targetPort: {{ $app.containerPort }}
+      protocol: TCP
+  selector:
+    app: "{{ $name }}"
+---
+{{- end }}
+{{- end }}

@@ -140,6 +140,14 @@ g2-services:
         limits:
           cpu: "1000m"
           memory: "1024Mi"
+    eta-service:
+      resources:
+        requests:
+          cpu: "200m"
+          memory: "256Mi"
+        limits:
+          cpu: "500m"
+          memory: "512Mi"
 
 flyway-job:
   enabled: false
