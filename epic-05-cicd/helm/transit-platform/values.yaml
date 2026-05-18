@@ -345,15 +345,18 @@ prometheus:
       tag: latest
       pullPolicy: Always
     service:
-      type: LoadBalancer
-      annotations:
-        service.beta.kubernetes.io/do-loadbalancer-type: REGIONAL_NETWORK
+      # ClusterIP: internal-only — Grafana reaches Prometheus via cluster DNS.
+      # Do NOT expose Prometheus publicly; it has no authentication.
+      type: ClusterIP
   alertmanager:
     image:
       registry: docker.io
       repository: bitnamilegacy/alertmanager
       tag: latest
       pullPolicy: Always
+    service:
+      # ClusterIP: internal-only — Alertmanager has no authentication.
+      type: ClusterIP
   ingress:
     # Kong will route traffic; keep Prometheus ingress disabled.
     enabled: false
