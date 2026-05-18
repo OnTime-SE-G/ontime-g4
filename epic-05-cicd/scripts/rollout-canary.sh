@@ -14,6 +14,14 @@ TIMEOUT=${TIMEOUT:-10m}
 CANARY_REPLICAS=${CANARY_REPLICAS:-1}
 G2_IMAGE_TAG=${G2_IMAGE_TAG:-}
 
+# Frontend image tags (per-app — each frontend has its own GHCR image)
+ADMIN_WEB_IMAGE_TAG=${ADMIN_WEB_IMAGE_TAG:-}
+DRIVER_WEB_IMAGE_TAG=${DRIVER_WEB_IMAGE_TAG:-}
+PASSENGER_WEB_IMAGE_TAG=${PASSENGER_WEB_IMAGE_TAG:-}
+
+# GHCR org prefix for frontend images
+FRONTEND_REGISTRY=${FRONTEND_REGISTRY:-ghcr.io/ontime-se-g/ontime-frontend}
+
 require_cmd() {
 	local name=$1
 	if ! command -v "$name" >/dev/null 2>&1; then
@@ -37,6 +45,19 @@ set_image_tag_args() {
 	echo "--set g2-services.services.anomaly-service.image.tag=${G2_IMAGE_TAG}"
 	echo "--set g2-services.services.stream-processing.image.tag=${G2_IMAGE_TAG}"
 	echo "--set g2-services.services.eta-service.image.tag=${G2_IMAGE_TAG}"
+}
+
+set_frontend_image_args() {
+	# Only emit --set args for tags that were explicitly provided.
+	if [[ -n "$ADMIN_WEB_IMAGE_TAG" ]]; then
+		echo "--set frontends.apps.admin-web.image=${FRONTEND_REGISTRY}/ontime-admin-web:${ADMIN_WEB_IMAGE_TAG}"
+	fi
+	if [[ -n "$DRIVER_WEB_IMAGE_TAG" ]]; then
+		echo "--set frontends.apps.driver-web.image=${FRONTEND_REGISTRY}/ontime-driver-web:${DRIVER_WEB_IMAGE_TAG}"
+	fi
+	if [[ -n "$PASSENGER_WEB_IMAGE_TAG" ]]; then
+		echo "--set frontends.apps.passenger-web.image=${FRONTEND_REGISTRY}/ontime-passenger-web:${PASSENGER_WEB_IMAGE_TAG}"
+	fi
 }
 
 rollout_status() {
@@ -63,6 +84,7 @@ echo "Namespace: $NAMESPACE"
 if [[ "$MODE" == "canary" ]]; then
 	set -o pipefail
 	mapfile -t image_args < <(set_image_tag_args)
+	mapfile -t frontend_args < <(set_frontend_image_args)
 
 	helm upgrade --install "$RELEASE_NAME" "$CHART_DIR" \
 		-n "$NAMESPACE" --create-namespace \
@@ -77,6 +99,7 @@ if [[ "$MODE" == "canary" ]]; then
 		--set g2-services.services.stream-processing.replicaCount="$CANARY_REPLICAS" \
 		--set g2-services.services.eta-service.replicaCount="$CANARY_REPLICAS" \
 		"${image_args[@]}" \
+		"${frontend_args[@]}" \
 		--wait --timeout "$TIMEOUT"
 
 	rollout_status
@@ -85,10 +108,12 @@ if [[ "$MODE" == "canary" ]]; then
 fi
 
 mapfile -t image_args < <(set_image_tag_args)
+mapfile -t frontend_args < <(set_frontend_image_args)
 helm upgrade --install "$RELEASE_NAME" "$CHART_DIR" \
 	-n "$NAMESPACE" --create-namespace \
 	-f "$VALUES_FILE" \
 	"${image_args[@]}" \
+	"${frontend_args[@]}" \
 	--wait --timeout "$TIMEOUT"
 
 rollout_status

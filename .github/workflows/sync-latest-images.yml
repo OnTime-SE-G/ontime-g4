@@ -1,0 +1,273 @@
+---
+name: Sync Latest Images
+
+# Polls GHCR for the latest image tags and deploys if anything changed.
+# All packages are public so GITHUB_TOKEN is sufficient for read access.
+# Runs entirely within ontime-g4 — no changes needed in G2 or frontend repos.
+#
+# DEPLOYMENT IS CURRENTLY DISABLED (schedule commented out).
+# Re-enable the schedule once cluster drift is resolved.
+# To test tag detection without deploying, run via workflow_dispatch with
+# deploy_enabled set to false.
+
+on:
+  # schedule:
+  #   - cron: "0 * * * *"   # uncomment to poll every hour
+
+  workflow_dispatch:
+    inputs:
+      g2_image_tag:
+        description: "Override G2 tag (blank = auto-detect from GHCR)"
+        required: false
+        default: ""
+      admin_web_tag:
+        description: "Override admin-web tag (blank = auto-detect)"
+        required: false
+        default: ""
+      driver_web_tag:
+        description: "Override driver-web tag (blank = auto-detect)"
+        required: false
+        default: ""
+      passenger_web_tag:
+        description: "Override passenger-web tag (blank = auto-detect)"
+        required: false
+        default: ""
+      deploy_enabled:
+        description: "Actually deploy? Set to false to only detect tags."
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  K8S_NAMESPACE: transit-platform
+  RELEASE_NAME: transit-platform
+  CHART_DIR: epic-05-cicd/helm/transit-platform
+  VALUES_FILE: epic-05-cicd/helm/transit-platform/values-staging.yaml
+
+jobs:
+  # ── 1. Detect latest tags from GHCR ──────────────────────────────────────
+  detect-tags:
+    runs-on: ubuntu-latest
+    outputs:
+      g2_image_tag: ${{ steps.resolve.outputs.g2_image_tag }}
+      admin_web_tag: ${{ steps.resolve.outputs.admin_web_tag }}
+      driver_web_tag: ${{ steps.resolve.outputs.driver_web_tag }}
+      passenger_web_tag: ${{ steps.resolve.outputs.passenger_web_tag }}
+      has_changes: ${{ steps.compare.outputs.has_changes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch latest tags from GHCR
+        id: ghcr
+        env:
+          # Packages are public — GITHUB_TOKEN is sufficient.
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x epic-05-cicd/scripts/fetch-latest-tags.sh
+          eval "$(bash epic-05-cicd/scripts/fetch-latest-tags.sh)"
+          echo "ghcr_g2=${G2_IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "ghcr_admin=${ADMIN_WEB_IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "ghcr_driver=${DRIVER_WEB_IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "ghcr_passenger=${PASSENGER_WEB_IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve final tags (manual overrides win over GHCR)
+        id: resolve
+        run: |
+          G2="${{ github.event.inputs.g2_image_tag || steps.ghcr.outputs.ghcr_g2 }}"
+          ADMIN="${{ github.event.inputs.admin_web_tag || steps.ghcr.outputs.ghcr_admin }}"
+          DRIVER="${{ github.event.inputs.driver_web_tag || steps.ghcr.outputs.ghcr_driver }}"
+          PASSENGER="${{ github.event.inputs.passenger_web_tag || steps.ghcr.outputs.ghcr_passenger }}"
+          echo "g2_image_tag=$G2" >> "$GITHUB_OUTPUT"
+          echo "admin_web_tag=$ADMIN" >> "$GITHUB_OUTPUT"
+          echo "driver_web_tag=$DRIVER" >> "$GITHUB_OUTPUT"
+          echo "passenger_web_tag=$PASSENGER" >> "$GITHUB_OUTPUT"
+          echo "--- Resolved tags ---"
+          echo "G2:            $G2"
+          echo "admin-web:     $ADMIN"
+          echo "driver-web:    $DRIVER"
+          echo "passenger-web: $PASSENGER"
+
+      - name: Compare against currently deployed tags
+        id: compare
+        run: |
+          CURRENT_G2=$(grep -A2 'repository: ghcr.io/ontime-se-g/ontime-g2/api-gateway' \
+            epic-05-cicd/helm/transit-platform/values.yaml \
+            | grep 'tag:' | head -1 | awk '{print $2}')
+          CURRENT_ADMIN=$(grep 'ontime-admin-web:' \
+            epic-05-cicd/helm/transit-platform/values.yaml \
+            | head -1 | sed 's/.*://')
+          CURRENT_DRIVER=$(grep 'ontime-driver-web:' \
+            epic-05-cicd/helm/transit-platform/values.yaml \
+            | head -1 | sed 's/.*://')
+          CURRENT_PASSENGER=$(grep 'ontime-passenger-web:' \
+            epic-05-cicd/helm/transit-platform/values.yaml \
+            | head -1 | sed 's/.*://')
+          NEW_G2="${{ steps.resolve.outputs.g2_image_tag }}"
+          NEW_ADMIN="${{ steps.resolve.outputs.admin_web_tag }}"
+          NEW_DRIVER="${{ steps.resolve.outputs.driver_web_tag }}"
+          NEW_PASSENGER="${{ steps.resolve.outputs.passenger_web_tag }}"
+          echo "--- Change detection ---"
+          echo "G2:            $CURRENT_G2 -> $NEW_G2"
+          echo "admin-web:     $CURRENT_ADMIN -> $NEW_ADMIN"
+          echo "driver-web:    $CURRENT_DRIVER -> $NEW_DRIVER"
+          echo "passenger-web: $CURRENT_PASSENGER -> $NEW_PASSENGER"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || \
+             [[ "$NEW_G2" != "$CURRENT_G2" ]] || \
+             [[ "$NEW_ADMIN" != "$CURRENT_ADMIN" ]] || \
+             [[ "$NEW_DRIVER" != "$CURRENT_DRIVER" ]] || \
+             [[ "$NEW_PASSENGER" != "$CURRENT_PASSENGER" ]]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "Changes detected."
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "No changes — skipping deploy."
+          fi
+
+  # ── 2. Canary rollout ────────────────────────────────────────────────────
+  canary:
+    runs-on: ubuntu-latest
+    needs: [detect-tags]
+    # Guard: changes detected AND deployment explicitly enabled via input.
+    if: |
+      needs.detect-tags.outputs.has_changes == 'true' &&
+      github.event.inputs.deploy_enabled == 'true'
+    environment: staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+          kubectl cluster-info
+
+      - name: Apply platform secrets
+        env:
+          POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+          POSTGRES_APP_PASSWORD: ${{ secrets.POSTGRES_APP_PASSWORD }}
+          KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+          INFLUXDB_ADMIN_PASSWORD: ${{ secrets.INFLUXDB_ADMIN_PASSWORD }}
+          INFLUXDB_ADMIN_TOKEN: ${{ secrets.INFLUXDB_ADMIN_TOKEN }}
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          FLYWAY_PASSWORD: ${{ secrets.FLYWAY_PASSWORD }}
+          G2_INFLUXDB_TOKEN: ${{ secrets.G2_INFLUXDB_TOKEN }}
+          HIVEMQ_USERNAME: ${{ secrets.HIVEMQ_USERNAME }}
+          HIVEMQ_PASSWORD: ${{ secrets.HIVEMQ_PASSWORD }}
+          POSTGRES_EXPORTER_DSN: ${{ secrets.POSTGRES_EXPORTER_DSN }}
+          ADMIN_WEB_AUTH_SECRET: ${{ secrets.ADMIN_WEB_AUTH_SECRET }}
+          ADMIN_WEB_KEYCLOAK_CLIENT_SECRET: ${{ secrets.ADMIN_WEB_KEYCLOAK_CLIENT_SECRET }}
+          DRIVER_WEB_AUTH_SECRET: ${{ secrets.DRIVER_WEB_AUTH_SECRET }}
+          DRIVER_WEB_KEYCLOAK_CLIENT_SECRET: ${{ secrets.DRIVER_WEB_KEYCLOAK_CLIENT_SECRET }}
+          PASSENGER_WEB_MAPBOX_TOKEN: ${{ secrets.PASSENGER_WEB_MAPBOX_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          K8S_NAMESPACE: ${{ env.K8S_NAMESPACE }}
+        run: |
+          kubectl create namespace "$K8S_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+          bash epic-05-cicd/scripts/apply-secrets.sh
+
+      - name: Build Helm dependencies (if needed)
+        run: |
+          if [ ! -d "$CHART_DIR/charts" ] || [ -z "$(ls -A "$CHART_DIR/charts" 2>/dev/null)" ]; then
+            helm dependency build "$CHART_DIR"
+          fi
+
+      - name: Canary rollout
+        env:
+          MODE: canary
+          CANARY_REPLICAS: "1"
+          G2_IMAGE_TAG: ${{ needs.detect-tags.outputs.g2_image_tag }}
+          ADMIN_WEB_IMAGE_TAG: ${{ needs.detect-tags.outputs.admin_web_tag }}
+          DRIVER_WEB_IMAGE_TAG: ${{ needs.detect-tags.outputs.driver_web_tag }}
+          PASSENGER_WEB_IMAGE_TAG: ${{ needs.detect-tags.outputs.passenger_web_tag }}
+        run: bash epic-05-cicd/scripts/rollout-canary.sh
+
+  # ── 3. Smoke tests ────────────────────────────────────────────────────────
+  smoke-test:
+    runs-on: ubuntu-latest
+    needs: [canary, detect-tags]
+    if: |
+      needs.detect-tags.outputs.has_changes == 'true' &&
+      github.event.inputs.deploy_enabled == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+
+      - name: Get Kong LoadBalancer IP
+        id: kong-ip
+        run: |
+          IP=$(kubectl get svc -n "$K8S_NAMESPACE" transit-platform-kong-proxy \
+            -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+          if [[ -z "$IP" ]]; then
+            echo "Could not resolve Kong LB IP — skipping smoke tests."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ip=$IP" >> "$GITHUB_OUTPUT"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run smoke tests
+        if: steps.kong-ip.outputs.skip != 'true'
+        env:
+          BASE_URL: http://${{ steps.kong-ip.outputs.ip }}
+          WS_URL: ws://${{ steps.kong-ip.outputs.ip }}/v1/live
+        run: bash epic-05-cicd/tests/smoke-test.sh
+
+  # ── 4. Promote to full replicas ──────────────────────────────────────────
+  promote:
+    runs-on: ubuntu-latest
+    needs: [smoke-test, detect-tags]
+    if: |
+      needs.detect-tags.outputs.has_changes == 'true' &&
+      github.event.inputs.deploy_enabled == 'true'
+    environment: staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+
+      - name: Build Helm dependencies (if needed)
+        run: |
+          if [ ! -d "$CHART_DIR/charts" ] || [ -z "$(ls -A "$CHART_DIR/charts" 2>/dev/null)" ]; then
+            helm dependency build "$CHART_DIR"
+          fi
+
+      - name: Promote to full replicas
+        env:
+          MODE: promote
+          G2_IMAGE_TAG: ${{ needs.detect-tags.outputs.g2_image_tag }}
+          ADMIN_WEB_IMAGE_TAG: ${{ needs.detect-tags.outputs.admin_web_tag }}
+          DRIVER_WEB_IMAGE_TAG: ${{ needs.detect-tags.outputs.driver_web_tag }}
+          PASSENGER_WEB_IMAGE_TAG: ${{ needs.detect-tags.outputs.passenger_web_tag }}
+        run: bash epic-05-cicd/scripts/rollout-canary.sh
+
+      - name: Deployment summary
+        run: |
+          echo "### Deployment complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Component | Deployed tag |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----------|-------------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| G2 services   | ${{ needs.detect-tags.outputs.g2_image_tag }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| admin-web     | ${{ needs.detect-tags.outputs.admin_web_tag }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| driver-web    | ${{ needs.detect-tags.outputs.driver_web_tag }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| passenger-web | ${{ needs.detect-tags.outputs.passenger_web_tag }} |" >> "$GITHUB_STEP_SUMMARY"
